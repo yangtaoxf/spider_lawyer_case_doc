@@ -21,9 +21,6 @@ def download_doc(doc_id):
 # 执行javascript数据
 def proceed_data_javascript():
     try:
-        # chromeOptions = Options()
-        # chromeOptions.add_argument('--allow-file-access-from-files')
-        # browser = webdriver.Chrome(chrome_options=chromeOptions)
         browser = webdriver.PhantomJS()
         browser.get(
             "file:///C:/Users/Administrator/PycharmProjects/spider_lawyer_case_doc/lawyer/case/doc/templete/doc_templete.html")

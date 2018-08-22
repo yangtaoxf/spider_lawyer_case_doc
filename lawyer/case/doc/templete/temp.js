@@ -1,0 +1,1 @@
+function init() {window.location.href='/Html_Pages/VisitRemind.html?DocID=2c4e4b5f-ffb7-4fc6-8a8e-0c102d47976c';}

@@ -1,5 +1,5 @@
 import logging
-
+import config
 import dbtools.helper as db_helper
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
@@ -8,9 +8,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(
 
 def get_case_lawyer_schema():
     global row
+    sub_order = config.case_lawyer_schema_order_by_sql
     try:
-        sql = '''SELECT lawyer_id,json_data_id,json_data_name from case_lawyer_schema where beautiful_html_status={} order by lawyer_id asc limit 1'''.format(
-            BEAUTIFUL_HTML_STATUS_00)
+        sql = '''SELECT lawyer_id,json_data_id,json_data_name from case_lawyer_schema where beautiful_html_status={} {} limit 1'''.format(
+            BEAUTIFUL_HTML_STATUS_00, sub_order)
         row = db_helper.fetch_one(sql)
     except Exception as e:
         logging.error(e)

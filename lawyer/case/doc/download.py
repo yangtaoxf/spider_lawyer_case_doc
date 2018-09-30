@@ -3,10 +3,12 @@ import json
 import logging
 import time
 import requests
+import config
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+
 
 import formatter
 
@@ -16,7 +18,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(
 
 def download_doc(doc_id):
     try:
-        text = save_data_javascript_file(doc_id, IpPort.proxies)
+        text = save_data_javascript_file(doc_id, IpPort.proxies, config.save_data_javascript_file_path)
         if text.find("此篇文书不存在!") > 0:
             return "文档不存在"
         return proceed_data_javascript()
@@ -54,11 +56,17 @@ def download_doc_html(doc_id):
 
 
 # 执行javascript数据
-def proceed_data_javascript(
-        html="file:///C:/Users/Administrator/PycharmProjects/spider_lawyer_case_doc/lawyer/case/doc/templete/doc_templete.html", ):
+def proceed_data_javascript(html=config.proceed_data_javascript_html, ):
     try:
-        browser = webdriver.PhantomJS(service_args=['--ignore-ssl-errors=true', '--ssl-protocol=TLSv1'])
-        # browser = webdriver.Chrome()
+        if "windows" in config.platform:
+            browser = webdriver.PhantomJS(service_args=['--ignore-ssl-errors=true', '--ssl-protocol=TLSv1'])
+        else:
+            chrome_options = webdriver.ChromeOptions()
+            chrome_options.add_argument('--headless')
+            chrome_options.add_argument('--disable-gpu')
+            chrome_options.add_argument("window-size=1024,768")
+            chrome_options.add_argument("--no-sandbox")
+            browser = webdriver.Chrome(chrome_options=chrome_options)
         browser.get(html)
         WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.XPATH, '//*[@id="DivContent"]/div')))
         element = browser.find_element_by_xpath("//*[@id=\"DivContent\"]")
@@ -102,21 +110,18 @@ def get_data_javascript_file(doc_id, proxies={}):
 
 
 # 获取javascript数据
-def save_data_javascript_file(doc_id, proxies={}):
+def save_data_javascript_file(doc_id, proxies={}, javascript_file=config.save_data_javascript_file_path):
     text = get_data_javascript_file(doc_id, proxies)
     _try = 0
     while _try <= 6 and text.find("此篇文书不存在!") > 0:
         logging.info("重试下载：" + doc_id)
         text = get_data_javascript_file(doc_id, proxies)
         _try = _try + 1
-    with open(r'C:\Users\Administrator\PycharmProjects\spider_lawyer_case_doc\lawyer\case\doc\templete\temp.js',
-              'w', encoding='utf-8') as f:
+    with open(javascript_file, 'w', encoding='utf-8') as f:
         f.write('')
     if text.find("window.location.href") == -1:
         try:
-            with open(r'C:\Users\Administrator\PycharmProjects\spider_lawyer_case_doc\lawyer\case\doc\templete\temp.js',
-                      'w',
-                      encoding='utf-8') as f:
+            with open(javascript_file, 'w', encoding='utf-8') as f:
                 f.write('function init() {' + text + '}')
         except Exception as e:
             logging.error(e)

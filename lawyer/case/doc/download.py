@@ -2,7 +2,6 @@
 import json
 import logging
 import time
-
 import requests
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -17,7 +16,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(
 
 def download_doc(doc_id):
     try:
-        save_data_javascript_file(doc_id, IpPort.proxies)
+        text = save_data_javascript_file(doc_id, IpPort.proxies)
+        if text.find("此篇文书不存在!") > 0:
+            return "文档不存在"
         return proceed_data_javascript()
     except Exception as e:
         logging.error(e)
@@ -42,24 +43,31 @@ def download_doc_html(doc_id):
             format_page = formatter.html_css_format(page)
         logging.info(format_page)
     except Exception as e:
-        logging.error(e)
-        logging.info(browser.page_source)
+        logging.exception(e)
+        page_source = browser.page_source
+        if "文档不存在" in page_source or "此篇文书不存在" in page_source:
+            format_page = "文档不存在"
+        logging.info(page_source)
     finally:
         browser.quit()
     return format_page
 
 
 # 执行javascript数据
-def proceed_data_javascript():
+def proceed_data_javascript(
+        html="file:///C:/Users/Administrator/PycharmProjects/spider_lawyer_case_doc/lawyer/case/doc/templete/doc_templete.html", ):
     try:
-        browser = webdriver.PhantomJS()
-        browser.get(
-            "file:///C:/Users/Administrator/PycharmProjects/spider_lawyer_case_doc/lawyer/case/doc/templete/doc_templete.html")
-        WebDriverWait(browser, 15).until(EC.presence_of_element_located((By.XPATH, '//*[@id="DivContent"]/div')))
+        browser = webdriver.PhantomJS(service_args=['--ignore-ssl-errors=true', '--ssl-protocol=TLSv1'])
+        # browser = webdriver.Chrome()
+        browser.get(html)
+        WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.XPATH, '//*[@id="DivContent"]/div')))
         element = browser.find_element_by_xpath("//*[@id=\"DivContent\"]")
         page = element.get_attribute('innerHTML')
-        format_page = formatter.html_css_format(page)
-        logging.info(format_page)
+        if page is None or len(page) < 5:
+            pass
+        else:
+            format_page = formatter.html_css_format(page)
+            logging.info(format_page)
     except Exception as e:
         logging.error(e)
     finally:
@@ -67,14 +75,11 @@ def proceed_data_javascript():
     return format_page
 
 
-# 获取javascript数据
-def save_data_javascript_file(doc_id, proxies={}):
+def get_data_javascript_file(doc_id, proxies={}):
     payload = {"DocID": doc_id, }
     headers = {'Accept': 'text/javascript, application/javascript, */*',
                'Accept-Encoding': 'gzip, deflate',
                'Accept-Language': 'zh-CN,zh;q=0.9',
-               # _gscu_2116842793=3352668046gxzw10; _gscbrs_2116842793=1; Hm_lvt_d2caefee2de09b8a6ea438d74fd98db2=1535356506,1535357163,1535357263,1535358398;
-               # vjkl5=e818651d29aff7a7ad9019118623720ec8b98995; Hm_lpvt_d2caefee2de09b8a6ea438d74fd98db2=1535358668; _gscs_2116842793=353572635yn8eq88|pv:11
                'Proxy - Connection': 'keep - alive',
                "Referer": "http://wenshu.court.gov.cn/content/content?DocID={}&KeyWord=".format(doc_id),
                'Host': 'wenshu.court.gov.cn',
@@ -88,15 +93,25 @@ def save_data_javascript_file(doc_id, proxies={}):
                         timeout=15)
     text = res.text
     logging.info(text)
-    with open(r'C:\Users\Administrator\PycharmProjects\spider_lawyer_case_doc\lawyer\case\doc\templete\temp.js',
-              'w', encoding='utf-8') as f:
-        f.write('')
     try:
         res.close()
         time.sleep(1)
     except Exception as e:
         logging.error(e)
+    return text
 
+
+# 获取javascript数据
+def save_data_javascript_file(doc_id, proxies={}):
+    text = get_data_javascript_file(doc_id, proxies)
+    _try = 0
+    while _try <= 6 and text.find("此篇文书不存在!") > 0:
+        logging.info("重试下载：" + doc_id)
+        text = get_data_javascript_file(doc_id, proxies)
+        _try = _try + 1
+    with open(r'C:\Users\Administrator\PycharmProjects\spider_lawyer_case_doc\lawyer\case\doc\templete\temp.js',
+              'w', encoding='utf-8') as f:
+        f.write('')
     if text.find("window.location.href") == -1:
         try:
             with open(r'C:\Users\Administrator\PycharmProjects\spider_lawyer_case_doc\lawyer\case\doc\templete\temp.js',
@@ -106,18 +121,6 @@ def save_data_javascript_file(doc_id, proxies={}):
         except Exception as e:
             logging.error(e)
         return text
-
-
-# wen_shu_js = "";
-# with open("./js/wen_shu.js") as f:
-#     wen_shu_js += f.read()
-# uuid = execjs.compile(wen_shu_js).call('guid')
-# logging.info(wen_shu_js)
-#
-#
-# def get_uuid():
-#     uuid = execjs.compile(wen_shu_js).call('guid')
-#     return uuid
 
 
 def post_get_vjkl5(guid, AJLX=None, WSLX=None, CPRQ='2018-08-16'):
@@ -239,10 +242,14 @@ class IpPort(object):
     def _get_ip():
         time.sleep(1)
         ret = requests.get(
-            'http://api.http.niumoip.com/v1/http/ip/get?p_id=406&s_id=1&u=AWJRM1FiAWQGMwwiUhxValp1DzNVbQsaUAdTVwQC&number=1&port=1&type=1&map=1&pro=0&city=0&pb=1&mr=3&cs=1')
+            # 'http://api.http.niumoip.com/v1/http/ip/get?p_id=406&s_id=1&u=AWJRM1FiAWQGMwwiUhxValp1DzNVbQsaUAdTVwQC&number=1&port=1&type=1&map=1&pro=0&city=0&pb=1&mr=3&cs=1'
+            # 'http://api.http.niumoip.com/v1/http/ip/get?p_id=94&s_id=2&u=AWJRM1FiAWQGMwwiUhxValp1DzNVbQsaUAdTVwQC&number=1&port=1&type=1&map=1&pro=0&city=0&pb=1&mr=3&cs=1'
+            'http://47.96.139.87:8081/Index-generate_api_url.html?packid=7&fa=5&qty=1&port=1&format=json&ss=5&css=&ipport=1&pro=&city='
+        )
         logging.info(ret.text)
         try:
             dj = json.loads(ret.text)
-            return dj['data'][0].get("ip") + ":" + str(dj['data'][0].get("port"))
+            # return dj['data'][0].get("ip") + ":" + str(dj['data'][0].get("port"))
+            return dj['data'][0].get("IP")
         except Exception as e:
             time.sleep(60)

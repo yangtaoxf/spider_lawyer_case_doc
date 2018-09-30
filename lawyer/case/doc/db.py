@@ -1,7 +1,6 @@
 import logging
 
 import dbtools.helper as db_helper
-import pymysql
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
                     datefmt='%a, %d %b %Y %H:%M:%S', filemode='a', )
@@ -141,3 +140,34 @@ def insert_case_lawyer_itslaw(lawyer_id, law_firm, companyName, profiles, profil
           )  VALUES (%s, %s, %s, %s, %s, %s)'''
     db_helper.insert(template_sql,
                      (lawyer_id, law_firm, companyName, "", "", lawyer_name,))
+
+
+#######################################
+# 处理案例数据分类
+def extract_pending_doc():
+    template_sql = '''
+    SELECT `id`,lawyer_id,sourceFrom,title from lawyerCase where pending='00' ORDER BY lawyer_id DESC LIMIT 1000
+    '''
+    return db_helper.fetch_all(template_sql)
+
+
+def extract_ads_field():
+    template_sql = '''
+    SELECT `id`,code,createDate,leval,isValid,`name`,pic,updateDate,sorted,selectType from ads_field 
+    '''
+    return db_helper.fetch_all(template_sql)
+
+
+def extract_ads_fieldkey():
+    template_sql = '''
+    SELECT `id`,createDate,fieldCode,isValid,keyword,`updateDate` from ads_fieldkey 
+    '''
+    return db_helper.fetch_all(template_sql)
+
+
+def update_pending_doc(doc_id, case_type):
+    template_sql = '''
+    UPDATE lawyerCase SET caseType=%s,pending='10' WHERE `id`=%s
+    '''
+    return db_helper.update(template_sql, (case_type, doc_id,))
+#######################################

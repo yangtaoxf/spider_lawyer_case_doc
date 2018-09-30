@@ -3,7 +3,7 @@ import logging
 
 import db
 import download
-import formatter
+import doc_classification
 
 
 def proceed_doc_html():
@@ -13,7 +13,11 @@ def proceed_doc_html():
         html_view = download.download_doc(schema.get("json_data_id"))
         html_source_js = None
         if html_view is not None and html_view != "":
-            case_type = formatter.lawyer_case_case_type(schema.get("json_data_name"), html_view)
+            if "文档不存在" in html_view:
+                db.update_fail_case_lawyer_schema(schema.get("json_data_id"))
+                return
+            case_type = doc_classification.match_field_code(schema.get("json_data_id"), schema.get("lawyer_id"),
+                                                            schema.get("json_data_name"))
             db.update_case_lawyer_schema(schema.get("json_data_id"), case_type, html_view, html_source_js)
         else:
             logging.error(html_view)

@@ -8,12 +8,15 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-
-
+import aiohttp
+from aiohttp.client_exceptions import ClientProxyConnectionError as ClientProxyConnectionError
 import formatter
+from proxy.pool import ProxyPool
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
                     datefmt='%a, %d %b %Y %H:%M:%S', filemode='a', )
+
+proxy_pool = ProxyPool()
 
 
 def download_doc(doc_id):
@@ -107,6 +110,48 @@ def get_data_javascript_file(doc_id, proxies={}):
     except Exception as e:
         logging.error(e)
     return text
+
+
+async def async_get_data_javascript(case_detail_dao):
+    """
+    获取javascript脚本内容
+    :param case_detail_dao 文档id
+    :return:
+    """
+    doc_id = case_detail_dao.case_detail.get("doc_id")
+    async with aiohttp.ClientSession() as client:
+        client.cookie_jar.clear()
+        payload = {"DocID": doc_id, }
+        headers = {'Accept': 'text/javascript, application/javascript, */*',
+                   'Accept-Encoding': 'gzip, deflate',
+                   'Accept-Language': 'zh-CN,zh;q=0.9',
+                   'Proxy - Connection': 'keep - alive',
+                   "Referer": "http://wenshu.court.gov.cn/content/content?DocID={}&KeyWord=".format(doc_id),
+                   'Host': 'wenshu.court.gov.cn',
+                   'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
+                   'X-Requested-With': 'XMLHttpRequest',
+                   }
+        logging.info(payload)
+        logging.info(headers)
+        proxy = proxy_pool.ip_pool.get("http")
+        try:
+            writ_content = await client.post(
+                url='http://wenshu.court.gov.cn/CreateContentJS/CreateContentJS.aspx?DocID={}'.format(doc_id),
+                proxy_headers=headers,
+                data=payload,
+                timeout=10,
+                proxy=proxy)
+            java_script = await writ_content.text()
+            assert writ_content.status == 200
+            # logging.info(java_script)
+            case_detail_dao.update_case_detail(java_script)
+        except AssertionError:
+            proxy_pool.refresh(proxy)
+        except ClientProxyConnectionError:
+            proxy_pool.refresh(proxy)
+        except Exception:
+            proxy_pool.refresh(proxy)
+            logging.exception("error=>:")
 
 
 # 获取javascript数据
@@ -247,14 +292,15 @@ class IpPort(object):
     def _get_ip():
         time.sleep(1)
         ret = requests.get(
-            # 'http://api.http.niumoip.com/v1/http/ip/get?p_id=406&s_id=1&u=AWJRM1FiAWQGMwwiUhxValp1DzNVbQsaUAdTVwQC&number=1&port=1&type=1&map=1&pro=0&city=0&pb=1&mr=3&cs=1'
-            # 'http://api.http.niumoip.com/v1/http/ip/get?p_id=94&s_id=2&u=AWJRM1FiAWQGMwwiUhxValp1DzNVbQsaUAdTVwQC&number=1&port=1&type=1&map=1&pro=0&city=0&pb=1&mr=3&cs=1'
-            'http://47.96.139.87:8081/Index-generate_api_url.html?packid=7&fa=5&qty=1&port=1&format=json&ss=5&css=&ipport=1&pro=&city='
+            # 'http://47.96.139.87:8081/Index-generate_api_url.html?packid=7&fa=5&qty=1&port=1&format=json&ss=5&css=&ipport=1&pro=&city='
+            "http://piping.mogumiao.com/proxy/api/get_ip_bs?appKey=b6f79e2ceee94ab09c703e9efd54528d&count=1&expiryDate=0&format=1&newLine=2"
         )
         logging.info(ret.text)
         try:
             dj = json.loads(ret.text)
             # return dj['data'][0].get("ip") + ":" + str(dj['data'][0].get("port"))
-            return dj['data'][0].get("IP")
+            # return dj['data'][0].get("IP")
+            {"code": "0", "msg": [{"port": "25402", "ip": "60.169.221.24"}]}
+            return dj['msg'][0].get("ip") + ":" + str(dj['msg'][0].get("port"))
         except Exception as e:
             time.sleep(60)

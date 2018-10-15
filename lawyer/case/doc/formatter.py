@@ -1,5 +1,4 @@
 # coding:utf8
-import db
 import logging
 
 _css_change_map = {

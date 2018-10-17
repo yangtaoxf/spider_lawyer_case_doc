@@ -1,6 +1,7 @@
 import logging
 import config
 import dbtools.helper as db_helper
+from dbtools import law_case_helper as db_lawcase_helper
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
                     datefmt='%a, %d %b %Y %H:%M:%S', filemode='a', )
@@ -171,4 +172,7 @@ def update_pending_doc(doc_id, case_type):
     UPDATE lawyerCase SET caseType=%s,pending='10' WHERE `id`=%s
     '''
     return db_helper.update(template_sql, (case_type, doc_id,))
+
+
 #######################################
+

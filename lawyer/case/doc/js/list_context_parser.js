@@ -1526,13 +1526,20 @@ function unzip(b64Data) {
     return strData;
 }
 
-function run_eval_parser(runEval) {
-    var java_script_str = unzip(runEval)
-    eval(java_script_str)
-    return java_script_str
+function GetJs(RunEval) {
+    return unzip(RunEval);
 }
 
 function EvalKey(js1, js2) {
     var $hidescript = eval(js1);
     return eval(js2)
+}
+
+function DecryptDocID(key, id) {
+    if (key) {
+        UpdateKey(key);
+    }
+    var unzipid = unzip(id);
+    var realid = com.str.Decrypt(unzipid);
+    return realid;
 }

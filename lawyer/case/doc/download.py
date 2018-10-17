@@ -139,7 +139,7 @@ async def async_get_data_javascript(case_detail_dao):
                 url='http://wenshu.court.gov.cn/CreateContentJS/CreateContentJS.aspx?DocID={}'.format(doc_id),
                 proxy_headers=headers,
                 data=payload,
-                timeout=10,
+                timeout=15,
                 proxy=proxy)
             java_script = await writ_content.text()
             assert writ_content.status == 200

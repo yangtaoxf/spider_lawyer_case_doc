@@ -2,6 +2,7 @@
 import dbtools.law_case_helper as db_lawcase_helper
 import logging
 import uuid
+import config
 
 # 解密文档
 CASE_PLAN_SCHEMA_DETAIL_00 = "00"  # 初始状态
@@ -25,7 +26,7 @@ def insert_case_plan_schema_detail(rule_id, page_index, schema_day, json_text):
                              (_id, rule_id, page_index, schema_day, CASE_PLAN_SCHEMA_DETAIL_00, json_text,))
 
 
-def extract_case_plan_schema_detail():
+def extract_case_plan_schema_detail(index=config.case_plan_schema_detail_index):
     sql = '''
     SELECT 
         detail_id,
@@ -36,9 +37,9 @@ def extract_case_plan_schema_detail():
         create_date,
         update_date,
         remarks
-    FROM case_plan_schema_detail WHERE state='00' ORDER BY schema_day limit 1 
+    FROM case_plan_schema_detail WHERE state='00' ORDER BY schema_day limit %s,1 
     '''
-    row = db_lawcase_helper.fetch_one(sql)
+    row = db_lawcase_helper.fetch_one(sql, (index,))
     db_lawcase_helper.update("UPDATE case_plan_schema_detail SET state=%s WHERE detail_id=%s",
                              (CASE_PLAN_SCHEMA_DETAIL_01, row.get("detail_id")))
     logging.info("ret=" + row['detail_id'] + row['schema_day'])

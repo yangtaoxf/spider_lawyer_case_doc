@@ -1,12 +1,14 @@
 # coding=utf8
+import logging
 import os
-import time
 import re
+import time
+
 import execjs
 
 __all__ = ["get_linux_time", "decrypt_id", "_test", "_value"]
 
-print(execjs.get().name)
+logging.info(execjs.get().name)
 with open(os.curdir + "/js/list_context_parser.js") as f:
     doc_id_js = f.read()
 

@@ -13,6 +13,7 @@ class ProxyPool(object):
     def __init__(self):
         self.ip_pool = IpPort.proxies
         if not self.ip_pool:
+            self.fail_count = 0
             self.refresh()
 
     def __new__(cls, *args, **kwargs):
@@ -31,7 +32,19 @@ class ProxyPool(object):
             IpPort.update = True
             IpPort.random_ip_port()
             logging.info("change IP:" + str(self.ip_pool))
+            self.fail_count = 0
             self.ip_pool = IpPort.proxies
+
+    def fail(self, history):
+        self.fail_count = self.fail_count + 1
+        logging.info("fail_count=" + str(self.fail_count))
+        now = self.ip_pool.get("http")
+        if self.fail_count >= 50 and (not now or history in now):
+            self.fail_count = 0
+            self.refresh(history)
+
+    def success(self):
+        self.fail_count = 0
 
 
 class IpPort(object):

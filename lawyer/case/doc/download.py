@@ -10,8 +10,11 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 import aiohttp
 from aiohttp.client_exceptions import ClientProxyConnectionError as ClientProxyConnectionError
+from concurrent.futures._base import TimeoutError as concurrent_TimeoutError
 import formatter
 from proxy.pool import ProxyPool
+from dao.lawcase import CaseDetailDao
+from aiohttp.client_exceptions import ClientOSError
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
                     datefmt='%a, %d %b %Y %H:%M:%S', filemode='a', )
@@ -86,6 +89,34 @@ def proceed_data_javascript(html=config.proceed_data_javascript_html, ):
     return format_page
 
 
+# 执行本地javascript数据
+def proceed_local_javascript(java_script, html=config.proceed_data_javascript_html):
+    try:
+        if "windows" in config.platform:
+            browser = webdriver.PhantomJS(service_args=['--ignore-ssl-errors=true', '--ssl-protocol=TLSv1'])
+        else:
+            chrome_options = webdriver.ChromeOptions()
+            chrome_options.add_argument('--headless')
+            chrome_options.add_argument('--disable-gpu')
+            chrome_options.add_argument("window-size=1024,768")
+            chrome_options.add_argument("--no-sandbox")
+            browser = webdriver.Chrome(chrome_options=chrome_options)
+        browser.get(html)
+        browser.execute_script("execute", java_script)
+        WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.XPATH, '//*[@id="DivContent"]/div')))
+        element = browser.find_element_by_xpath("//*[@id=\"DivContent\"]")
+        page = element.get_attribute('innerHTML')
+        if page is None or len(page) < 5:
+            pass
+        else:
+            format_page = formatter.html_css_format(page)
+            logging.info(format_page)
+    except Exception as e:
+        logging.error(e)
+    finally:
+        browser.quit()
+    return format_page
+
 def get_data_javascript_file(doc_id, proxies={}):
     payload = {"DocID": doc_id, }
     headers = {'Accept': 'text/javascript, application/javascript, */*',
@@ -112,13 +143,13 @@ def get_data_javascript_file(doc_id, proxies={}):
     return text
 
 
-async def async_get_data_javascript(case_detail_dao):
+async def async_get_data_javascript(doc_id):
     """
     获取javascript脚本内容
     :param case_detail_dao 文档id
+    :param doc_id
     :return:
     """
-    doc_id = case_detail_dao.case_detail.get("doc_id")
     async with aiohttp.ClientSession() as client:
         client.cookie_jar.clear()
         payload = {"DocID": doc_id, }
@@ -131,9 +162,11 @@ async def async_get_data_javascript(case_detail_dao):
                    'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
                    'X-Requested-With': 'XMLHttpRequest',
                    }
-        logging.info(payload)
-        logging.info(headers)
+        # logging.info(payload)
+        # logging.info(headers)
         proxy = proxy_pool.ip_pool.get("http")
+        logging.info(proxy + str("doc_id=" + doc_id))
+        writ_content = None
         try:
             writ_content = await client.post(
                 url='http://wenshu.court.gov.cn/CreateContentJS/CreateContentJS.aspx?DocID={}'.format(doc_id),
@@ -143,15 +176,32 @@ async def async_get_data_javascript(case_detail_dao):
                 proxy=proxy)
             java_script = await writ_content.text()
             assert writ_content.status == 200
-            # logging.info(java_script)
-            case_detail_dao.update_case_detail(java_script)
+            if java_script and "window.location.href" in java_script:
+                logging.warning(java_script)
+                proxy_pool.fail(proxy)
+                return
+            CaseDetailDao.update_case_detail(doc_id, java_script)
+            CaseDetailDao.remove_doc_id(doc_id)
+            proxy_pool.success()
         except AssertionError:
-            proxy_pool.refresh(proxy)
+            proxy_pool.fail(proxy)
         except ClientProxyConnectionError:
             proxy_pool.refresh(proxy)
+        except ClientOSError:
+            proxy_pool.fail(proxy)
+        except TimeoutError:
+            logging.exception()
+            proxy_pool.fail(proxy)
+        except concurrent_TimeoutError:
+            logging.warning("concurrent_TimeoutError")
+            proxy_pool.fail(proxy)
         except Exception:
+            CaseDetailDao.remove_doc_id(doc_id)
             proxy_pool.refresh(proxy)
             logging.exception("error=>:")
+        finally:
+            if writ_content:
+                writ_content.close()
 
 
 # 获取javascript数据

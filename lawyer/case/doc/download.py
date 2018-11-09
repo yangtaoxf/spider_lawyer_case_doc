@@ -15,6 +15,7 @@ import formatter
 from proxy.pool import ProxyPool
 from dao.lawcase import CaseDetailDao
 from aiohttp.client_exceptions import ClientOSError
+from proxy.pool import NotIpProxyException
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
                     datefmt='%a, %d %b %Y %H:%M:%S', filemode='a', )
@@ -117,6 +118,7 @@ def proceed_local_javascript(java_script, html=config.proceed_data_javascript_ht
         browser.quit()
     return format_page
 
+
 def get_data_javascript_file(doc_id, proxies={}):
     payload = {"DocID": doc_id, }
     headers = {'Accept': 'text/javascript, application/javascript, */*',
@@ -146,10 +148,17 @@ def get_data_javascript_file(doc_id, proxies={}):
 async def async_get_data_javascript(doc_id):
     """
     获取javascript脚本内容
-    :param case_detail_dao 文档id
     :param doc_id
     :return:
     """
+    async with aiohttp.ClientSession() as client:
+        client.cookie_jar.clear()
+        # logging.info(payload)
+        # logging.info(headers)
+        await async_get_data_javascript_step2(client, doc_id)
+
+
+async def async_get_data_javascript_callback(doc_id, callback=None):
     async with aiohttp.ClientSession() as client:
         client.cookie_jar.clear()
         payload = {"DocID": doc_id, }
@@ -162,12 +171,12 @@ async def async_get_data_javascript(doc_id):
                    'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
                    'X-Requested-With': 'XMLHttpRequest',
                    }
-        # logging.info(payload)
-        # logging.info(headers)
-        proxy = proxy_pool.ip_pool.get("http")
-        logging.info(proxy + str("doc_id=" + doc_id))
+        ip_proxy_item = proxy_pool.extract_cache_ip_proxy_item()
+        proxy = ip_proxy_item.proxies.get("http")
+        logging.info(str("doc_id=" + doc_id) + ";===proxy===" + proxy)
         writ_content = None
         try:
+            ProxyPool.check_proxy(proxy)  # 代理检查
             writ_content = await client.post(
                 url='http://wenshu.court.gov.cn/CreateContentJS/CreateContentJS.aspx?DocID={}'.format(doc_id),
                 proxy_headers=headers,
@@ -176,25 +185,195 @@ async def async_get_data_javascript(doc_id):
                 proxy=proxy)
             java_script = await writ_content.text()
             assert writ_content.status == 200
+            # 检查内容是否正确*** 开始 ***
+            if java_script and "window.location.href" in java_script:
+                logging.info("===ip已经可能被封===")
+                proxy_pool.fail(ip_proxy_item, multiple=6)
+                return
+            elif java_script and "<title>出错啦</title>" in java_script:
+                logging.info("===获取内容失败===")
+                proxy_pool.fail(ip_proxy_item, multiple=1)
+                return
+            # 检查内容是否正确*** 结束 ***
+            callback.callback_success(doc_id, java_script, ip_proxy_item)
+        except AssertionError:
+            logging.error("AssertionError" + str(writ_content.status))
+            if writ_content.status == 503:
+                logging.warning("503,重试.")
+            elif writ_content.status == 429:
+                logging.warning("429,太多服务请求.")
+            elif writ_content.status == 502:
+                logging.warning("502,网关异常.")
+            else:
+                logging.error("writ_content.status={} proxy={}".format(str(writ_content.status), proxy))
+                proxy_pool.fail(ip_proxy_item)
+        except NotIpProxyException:
+            logging.error("===没有获取使用ip===")
+            proxy_pool.refresh(ip_proxy_item)
+        except ClientProxyConnectionError:
+            logging.error("ClientProxyConnectionError")
+            proxy_pool.fail(ip_proxy_item, multiple=10)
+        except ClientOSError:
+            logging.error("ClientOSError")
+            proxy_pool.fail(ip_proxy_item)
+        except aiohttp.client_exceptions.ClientPayloadError:
+            logging.error("ClientPayloadError")
+            proxy_pool.fail(ip_proxy_item)
+        except TimeoutError:
+            logging.error("TimeoutError")
+            proxy_pool.fail(ip_proxy_item)
+        except concurrent_TimeoutError:
+            logging.error("concurrent_TimeoutError")
+            proxy_pool.fail(ip_proxy_item)
+        except aiohttp.client_exceptions.ServerDisconnectedError:
+            logging.error("ServerDisconnectedError")
+            proxy_pool.fail(ip_proxy_item, multiple=2)
+        except Exception:
+            callback.callback_fail(doc_id)
+            proxy_pool.refresh(ip_proxy_item)
+            logging.exception("error=>:")
+        finally:
+            if writ_content:
+                writ_content.close()
+
+
+async def async_get_data_javascript_step2(client, doc_id):
+    payload = {"DocID": doc_id, }
+    headers = {'Accept': 'text/javascript, application/javascript, */*',
+               'Accept-Encoding': 'gzip, deflate',
+               'Accept-Language': 'zh-CN,zh;q=0.9',
+               'Proxy - Connection': 'keep - alive',
+               "Referer": "http://wenshu.court.gov.cn/content/content?DocID={}&KeyWord=".format(doc_id),
+               'Host': 'wenshu.court.gov.cn',
+               'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
+               'X-Requested-With': 'XMLHttpRequest',
+               }
+    ip_proxy_item = proxy_pool.extract_cache_ip_proxy_item()
+    proxy = ip_proxy_item.proxies.get("http")
+    logging.info(str("doc_id=" + doc_id) + ";===proxy===" + proxy)
+    writ_content = None
+    try:
+        ProxyPool.check_proxy(proxy)  # 代理检查
+        writ_content = await client.post(
+            url='http://wenshu.court.gov.cn/CreateContentJS/CreateContentJS.aspx?DocID={}'.format(doc_id),
+            proxy_headers=headers,
+            data=payload,
+            timeout=15,
+            proxy=proxy)
+        java_script = await writ_content.text()
+        assert writ_content.status == 200
+        # 检查内容是否正确*** 开始 ***
+        if java_script and "window.location.href" in java_script:
+            logging.info("===ip已经可能被封===")
+            proxy_pool.fail(ip_proxy_item, multiple=6)
+            return
+        elif java_script and "<title>出错啦</title>" in java_script:
+            logging.info("===获取内容失败===")
+            proxy_pool.fail(ip_proxy_item, multiple=1)
+            return
+        # 检查内容是否正确*** 结束 ***
+        CaseDetailDao.update_case_detail(doc_id, java_script, ip_proxy_item)
+        CaseDetailDao.remove_doc_id(doc_id)
+        proxy_pool.success(ip_proxy_item)
+    except AssertionError:
+        logging.error("AssertionError" + str(writ_content.status))
+        if writ_content.status == 503:
+            logging.warning("503,重试.")
+        elif writ_content.status == 429:
+            logging.warning("429,太多服务请求.")
+        elif writ_content.status == 502:
+            logging.warning("502,网关异常.")
+        else:
+            logging.error("writ_content.status={} proxy={}".format(str(writ_content.status), proxy))
+            proxy_pool.fail(ip_proxy_item)
+    except NotIpProxyException:
+        logging.error("===没有获取使用ip===")
+        proxy_pool.refresh(ip_proxy_item)
+    except ClientProxyConnectionError:
+        logging.error("ClientProxyConnectionError")
+        proxy_pool.fail(ip_proxy_item, multiple=10)
+    except ClientOSError:
+        logging.error("ClientOSError")
+        proxy_pool.fail(ip_proxy_item)
+    except aiohttp.client_exceptions.ClientPayloadError:
+        logging.error("ClientPayloadError")
+        proxy_pool.fail(ip_proxy_item)
+    except TimeoutError:
+        logging.error("TimeoutError")
+        proxy_pool.fail(ip_proxy_item)
+    except concurrent_TimeoutError:
+        logging.error("concurrent_TimeoutError")
+        proxy_pool.fail(ip_proxy_item)
+    except aiohttp.client_exceptions.ServerDisconnectedError:
+        logging.error("ServerDisconnectedError")
+        proxy_pool.fail(ip_proxy_item, multiple=2)
+    except Exception:
+        CaseDetailDao.remove_doc_id(doc_id)
+        proxy_pool.refresh(ip_proxy_item)
+        logging.exception("error=>:")
+    finally:
+        if writ_content:
+            writ_content.close()
+
+
+async def async_get_data_javascript_bak(doc_id):
+    """
+    获取javascript脚本内容
+    :param doc_id
+    :return:
+    """
+    proxyUser = "H82C19GU70U01NSD"
+    proxyPass = "813EBA51A28BE712"
+    proxy_auth = aiohttp.BasicAuth(proxyUser, proxyPass)
+    async with aiohttp.ClientSession() as client:
+        client.cookie_jar.clear()
+        payload = {"DocID": doc_id, }
+        headers = {'Accept': 'text/javascript, application/javascript, */*',
+                   'Accept-Encoding': 'gzip, deflate',
+                   'Accept-Language': 'zh-CN,zh;q=0.9',
+                   'Proxy - Connection': 'keep - alive',
+                   "Referer": "http://wenshu.court.gov.cn/content/content?DocID={}&KeyWord=".format(doc_id),
+                   'Host': 'wenshu.court.gov.cn',
+                   'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
+                   'X-Requested-With': 'XMLHttpRequest',
+                   }
+        # 代理隧道验证信息
+        proxyMeta = "http://http-dyn.abuyun.com:9020"
+        proxy = proxyMeta
+        logging.info(proxy + str("doc_id=" + doc_id))
+        writ_content = None
+        try:
+            writ_content = await client.post(
+                url='http://wenshu.court.gov.cn/CreateContentJS/CreateContentJS.aspx?DocID={}'.format(doc_id),
+                proxy_headers=headers,
+                data=payload,
+                timeout=10,
+                proxy=proxy,
+                proxy_auth=proxy_auth
+            )
+            java_script = await writ_content.text()
+            assert writ_content.status == 200
             if java_script and "window.location.href" in java_script:
                 logging.warning(java_script)
-                proxy_pool.fail(proxy)
+                proxy_pool.fail(proxy, multiple=5)
                 return
             CaseDetailDao.update_case_detail(doc_id, java_script)
             CaseDetailDao.remove_doc_id(doc_id)
             proxy_pool.success()
         except AssertionError:
-            proxy_pool.fail(proxy)
+            logging.error("AssertionError")
         except ClientProxyConnectionError:
-            proxy_pool.refresh(proxy)
+            logging.error("ClientProxyConnectionError")
         except ClientOSError:
-            proxy_pool.fail(proxy)
+            logging.error("ClientOSError")
+        except aiohttp.client_exceptions.ClientPayloadError:
+            logging.error("ClientPayloadError")
         except TimeoutError:
-            logging.exception()
-            proxy_pool.fail(proxy)
+            logging.error("TimeoutError")
         except concurrent_TimeoutError:
-            logging.warning("concurrent_TimeoutError")
-            proxy_pool.fail(proxy)
+            logging.error("concurrent_TimeoutError")
+        except aiohttp.client_exceptions.ServerDisconnectedError:
+            logging.error("ServerDisconnectedError")
         except Exception:
             CaseDetailDao.remove_doc_id(doc_id)
             proxy_pool.refresh(proxy)
@@ -332,11 +511,6 @@ class IpPort(object):
             IpPort.count = 0
         logging.info("IpPort count=" + str(IpPort.count))
         return IpPort
-
-    @staticmethod
-    def get_cookie_dict(doc_id):
-        IpPort.cookie_dict = init_cookies(doc_id)
-        return IpPort.cookie_dict
 
     @staticmethod
     def _get_ip():

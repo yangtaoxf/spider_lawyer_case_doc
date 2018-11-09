@@ -1,5 +1,9 @@
-# coding:utf8
+# coding=utf8
 import logging
+import re
+import json
+
+from bs4 import BeautifulSoup
 
 _css_change_map = {
     'FONT-SIZE: 16pt': 'FONT-SIZE: 12pt',
@@ -9,18 +13,135 @@ _css_change_map = {
     'LINE-HEIGHT: 30pt': 'LINE-HEIGHT: 25pt',
 }
 
-_templete_DivContent = '<div id="DivContent" style="TEXT-ALIGN: justify; text-justify: inter-ideograph;">{}</div>'
+_templete_divcontent = '<div id="DivContent" style="TEXT-ALIGN: justify; text-justify: inter-ideograph;">{}</div>'
 
 
 # HTML转义
 def html_css_format(html_context):
-    if html_context == None or html_context == "":
+    if not html_context:
         return None
     for old, new in _css_change_map.items():
         html_context = html_context.replace(old, new)
-    return _templete_DivContent.format(html_context)
+    return _templete_divcontent.format(html_context)
 
 
+class Result(object):
+    def __init__(self):
+        """
+        解析结果信息容器
+        """
+        self.result = False
+        self.data = {}
+        self.html = None
+        self.text = None
+        self.msg = ""
+        self.master_domain = 0
+        self.court_level = "99"
+        self.judge_year = None
+        self.province = ""
+
+    def success(self, data, html, text, master_domain, court_province):
+        self.result = True
+        self.data = data
+        self.html = html
+        self.text = text
+        self.master_domain = master_domain
+        self.province = court_province
+
+    def fail(self, msg):
+        self.result = False
+        self.msg = msg
+
+    def __str__(self):
+        return str(self.result) + str(self.data) + str(self.html)
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class DocContextJsParser(object):
+    from config import ADS_FIELD_KEY, COURT_LEVEL
+    ADS_FIELD_DATA = ADS_FIELD_KEY
+
+    @staticmethod
+    def parse_convert_html(java_script, doc_title=None, doc_court=None, doc_judge_date=None) -> Result:
+        """
+        转移html文档
+        """
+        __ret = Result()
+        __data_list = re.findall(r'JSON\.stringify\(([\s\S]*?)\);', java_script)
+        data = json.loads(__data_list.pop())
+        __html_list = re.findall(r'\\"Html\\":\\"(.*?)\\"}";', java_script)
+        __html = __html_list.pop()
+        __html = __html.replace("01lydyh01", "\'")
+        for old, new in _css_change_map.items():
+            __html = __html.replace(old, new)
+        __html = _templete_divcontent.format(__html)
+        soup = BeautifulSoup(__html, features="html.parser")
+        __text = soup.getText(separator="\n")
+        __doc_title = doc_title if doc_title else data.get("案件名称")
+        __court_province = data.get("法院省份")
+        __master_domain = DocContextJsParser.match_master_skill_domain(doc_title=__doc_title)
+        __ret.success(data, __html, __text, __master_domain, __court_province)
+        DocContextJsParser.calculate_court_level(court_name=doc_court, data=data, ret=__ret)
+        DocContextJsParser.calculate_judge_year(doc_judge_date=doc_judge_date, ret=__ret)
+        return __ret
+
+    @staticmethod
+    def match_master_skill_domain(doc_title):
+        """
+        匹配擅长领域
+        :return:
+        """
+        # 默认239其他
+        ret_value = "239"
+        for key, value in DocContextJsParser.ADS_FIELD_DATA.items():
+            if doc_title and key in doc_title:
+                ret_value = value
+                logging.info('match ret_key={} ret_value={} doc_title={}'.format(key, value, doc_title))
+                return ret_value
+        logging.warning("default ==>" + ret_value)
+        return ret_value
+
+    @staticmethod
+    def calculate_court_level(court_name, data, ret) -> Result:
+        """
+        计算法院等级
+        :return:
+        """
+        level = DocContextJsParser.COURT_LEVEL.get(court_name)
+        if not level:
+            logging.warning("court_name={}***没有对应的法院等级".format(court_name))
+            __court_name = data.get("法院名称")
+            logging.info("__court_name={}***".format(__court_name))
+            level = DocContextJsParser.COURT_LEVEL.get(__court_name)
+        if not level:
+            logging.warning("[***均没有对应的法院***]")
+            level = "99"
+        ret.court_level = level
+        return ret
+
+    @staticmethod
+    def calculate_judge_year(doc_judge_date, ret) -> Result:
+        """
+        计算裁判日期
+        """
+        if doc_judge_date:
+            ret.judge_year = doc_judge_date[0:4]
+        return ret
+
+
+# print(DocContextJsParser.calculate_court_level("邳州市人民法院"))
+# with open("./js/temp_demo.js", encoding="utf8") as f:
+#     test_java_script = f.read()
+# ret = DocContextJsParser.parse_convert_html(test_java_script)
+# print(ret.html)
+# print(ret.data)
+# print(ret.text)
+# print(ret.court_level)
+# print(ret.master_domain)
+# print(ret.province)
+# print(DocContextJsParser.match_master_skill_domain(ret.data["案件名称"]))
 # 擅长领域字典
 _master_skill_domian = [
     {"key": "201", "value": "毒品犯罪", "column": "案件名称", "keyword": ["毒品"]},

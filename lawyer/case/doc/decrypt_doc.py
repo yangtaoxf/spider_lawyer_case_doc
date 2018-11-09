@@ -1,13 +1,15 @@
 # coding=utf8
+import json
 import logging
 import time
-import json
-import law_case_db as task_db
-from util import decrypt_id, _test, _value
-from pymysql.err import IntegrityError
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
-                    datefmt='%a, %d %b %Y %H:%M:%S', )
+from pymysql.err import IntegrityError, InterfaceError
+import law_case_db as task_db
+from util import decrypt_id
+
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
+                    datefmt='%a, %d %b %Y %H:%M:%S', filemode='a', )
 
 
 class CaseDetailProcessor(object):
@@ -16,15 +18,21 @@ class CaseDetailProcessor(object):
     """
 
     def __init__(self):
-        self.case_plan_schema_detail_dict = {}
-        self.case_plan_schema_detail_dict = task_db.extract_case_plan_schema_detail()
+        from util.redis_util import RedisCasePlanSchemaDetailMaster
+        self.case_plan_schema_detail_dict = RedisCasePlanSchemaDetailMaster.extract_case_plan_schema_detail(
+            extract_num=1).pop()
 
     def proceed(self):
-        detail_id = self.case_plan_schema_detail_dict.get("detail_id")
-        schema_day = self.case_plan_schema_detail_dict.get("schema_day")
-        rule_id = self.case_plan_schema_detail_dict.get("rule_id")
-        json_text = self.case_plan_schema_detail_dict.get("json_text")
+        if not self.case_plan_schema_detail_dict:
+            logging.warning("没有数据sleep 5s")
+            time.sleep(5)
+            return
+        detail_id = self.case_plan_schema_detail_dict["detail_id"]
+        schema_day = self.case_plan_schema_detail_dict["schema_day"]
+        rule_id = self.case_plan_schema_detail_dict["rule_id"]
+        json_text = self.case_plan_schema_detail_dict["json_text"]
         deal_state = task_db.CASE_PLAN_SCHEMA_DETAIL_09
+        logging.info("detail_id=" + detail_id + ";schema_day=" + schema_day)
         try:
             if "RunEval" in json_text:
                 if '"[{\\' in json_text:
@@ -38,7 +46,6 @@ class CaseDetailProcessor(object):
                         run_eval = it.get("RunEval")
                         if it.get("Count") is not None:
                             continue
-                    doc_source = it.get("裁判要旨段原文")
                     doc_type = it.get("案件类型")
                     doc_judge_date = it.get("裁判日期")
                     doc_title = it.get("案件名称")
@@ -51,7 +58,7 @@ class CaseDetailProcessor(object):
                     doc_reason = it.get("不公开理由")
                     try:
                         task_db.insert_case_detail(
-                            (detail_id, "批量处理", doc_id, schema_day, rule_id, '00', doc_level, doc_num, doc_source,
+                            (detail_id, "批量处理", doc_id, schema_day, rule_id, '00', doc_level, doc_num,
                              doc_reason, doc_type, doc_judge_date, doc_title, doc_court))
                     except IntegrityError:
                         logging.exception("发生了错误 IntegrityError")
@@ -69,8 +76,13 @@ class CaseDetailProcessor(object):
 if __name__ == "__main__":
     while True:
         try:
+            logging.info("==============start================")
             processor = CaseDetailProcessor()
             processor.proceed()
+            logging.info("===============end=================")
+        except InterfaceError as e:
+            logging.exception("=*=InterfaceError=*= 退出 ")
+            break
         except Exception as e:
             logging.exception("发生了错误")
             time.sleep(60)

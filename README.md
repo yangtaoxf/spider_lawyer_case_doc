@@ -21,8 +21,8 @@
 3. IP资源很稀少，所以代理池的代理本者最大利于原则，失败次数到了一定配置次数才会置为不可用，重新拿取IP
 --------
 | 任务节点 | 执行脚本 | 说明 | 备注 |
-|:-------|:-------------|:----------|
-| [下载搜索目录加密返回结果]((lawyer/case/doc/redis_case_plan_schema_task_master.sh)) | *sh redis_case_plan_schema_task_master.sh* |  |
-|   [解析加密文档id]()  |  |  |
-|   [根据文档id，爬取文档]()  | | |
+|:-------|:-------------|:----------|:----------|
+| [下载搜索目录加密返回结果](lawyer/case/doc/redis_case_plan_schema_task_master.sh) | *sh redis_case_plan_schema_task_master.sh* |  |  |
+|   解析加密文档id  |  |  |  |
+|   根据文档id，爬取文档 |  |  |  |
 

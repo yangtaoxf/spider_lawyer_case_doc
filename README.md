@@ -28,4 +28,4 @@
 
 | Pattern | Description |
 |:-------:| ----------- |
-| [下载目录](structural/3-tier.py) | data<->business logic<->presentation separation (strict relationships) |
+| [下载目录](lawyer/case/doc/redis_case_plan_schema_task_master.sh) | data<->business logic<->presentation separation (strict relationships) |

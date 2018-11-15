@@ -3,10 +3,10 @@
 
 **使用到PYTHON库**:
 
-|    Python库 | 用途 | 备注 |
+|    Python库 | 用途 | 安装 ｜ 备注 |
 |:-------|:-------------| ----------|
-| aiohttp  | 协程，异步IO | 比requests等库高效，比scrapy简单 |
-| PyExecJS  | 执行js |  |
+| aiohttp  | 协程，异步IO | *pip3 install aiohttp* |比requests等库高效，比scrapy简单 |
+| PyExecJS  | 执行js | *pip3 install PyExecJS* | |
 
 **LINUX服务器环境配置**:
 

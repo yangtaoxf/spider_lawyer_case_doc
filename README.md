@@ -20,12 +20,9 @@
 2. 任务划分：分为3个节点，且下一节点需要在上一节点完成后再进行爬取
 3. IP资源很稀少，所以代理池的代理本者最大利于原则，失败次数到了一定配置次数才会置为不可用，重新拿取IP
 --------
-| 任务节点 | 说明 | 备注 |
+| 任务节点 | 执行脚本 | 说明 | 备注 |
 |:-------|:-------------|:----------|
-| 下载搜索目录加密返回结果 | 执行复杂的JavaScript | 注意代码使用的JavaScript环境 |
-|   解析加密文档id  |  |  |
-|   根据文档id，爬取文档  | | |
+| [下载搜索目录加密返回结果]((lawyer/case/doc/redis_case_plan_schema_task_master.sh)) | *sh redis_case_plan_schema_task_master.sh* |  |
+|   [解析加密文档id]()  |  |  |
+|   [根据文档id，爬取文档]()  | | |
 
-| Pattern | Description |
-|:-------:| ----------- |
-| [下载目录](lawyer/case/doc/redis_case_plan_schema_task_master.sh) | data<->business logic<->presentation separation (strict relationships) |

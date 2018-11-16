@@ -31,7 +31,7 @@ if __name__ == "__main__":
                                            doc_court=doc_court)
         if result.result:  # 解析成功
             CaseDocDao.insert_into_case_doc(doc_id=result.doc_id,
-                                            content=result.text,
+                                            # content=result.content,
                                             html=result.html,
                                             java_script=doc_javascript,
                                             exists=exists

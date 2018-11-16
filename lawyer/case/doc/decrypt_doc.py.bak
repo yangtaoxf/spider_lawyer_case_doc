@@ -3,10 +3,10 @@ import json
 import logging
 import time
 
-from pymysql.err import IntegrityError
-
+from pymysql.err import IntegrityError, InterfaceError
 import law_case_db as task_db
 from util import decrypt_id
+from multiprocessing import cpu_count, Process
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
@@ -23,15 +23,12 @@ class CaseDetailProcessor(object):
         self.case_plan_schema_detail_dict = RedisCasePlanSchemaDetailMaster.extract_case_plan_schema_detail(
             extract_num=1).pop()
 
-    def proceed(self):
-        if not self.case_plan_schema_detail_dict:
-            logging.warning("没有数据sleep 5s")
-            time.sleep(5)
-            return
-        detail_id = self.case_plan_schema_detail_dict["detail_id"]
-        schema_day = self.case_plan_schema_detail_dict["schema_day"]
-        rule_id = self.case_plan_schema_detail_dict["rule_id"]
-        json_text = self.case_plan_schema_detail_dict["json_text"]
+    @staticmethod
+    def proceed(case_plan_schema_detail_dict):
+        detail_id = case_plan_schema_detail_dict["detail_id"]
+        schema_day = case_plan_schema_detail_dict["schema_day"]
+        rule_id = case_plan_schema_detail_dict["rule_id"]
+        json_text = case_plan_schema_detail_dict["json_text"]
         deal_state = task_db.CASE_PLAN_SCHEMA_DETAIL_09
         logging.info("detail_id=" + detail_id + ";schema_day=" + schema_day)
         try:
@@ -75,12 +72,21 @@ class CaseDetailProcessor(object):
 
 
 if __name__ == "__main__":
+    __cpu_count = cpu_count()
     while True:
-        try:
-            logging.info("==============start================")
-            processor = CaseDetailProcessor()
-            processor.proceed()
-            logging.info("===============end=================")
-        except Exception as e:
-            logging.exception("发生了错误")
-            time.sleep(60)
+        logging.info("=*= 系统cpu个数是:" + str(__cpu_count))
+        from util.redis_util import RedisCasePlanSchemaDetailMaster
+
+        data_list = RedisCasePlanSchemaDetailMaster.extract_case_plan_schema_detail(
+            extract_num=__cpu_count)
+        if len(data_list) <= 0:
+            logging.info("=*=没有任务，休眠60秒=*=")
+            time.sleep(5)
+            continue
+        ret = []
+        for data in data_list:
+            p = Process(target=CaseDetailProcessor.proceed, args=(data,))
+            p.start()
+            ret.append(p)
+        for _ret in ret:
+            _ret.join()

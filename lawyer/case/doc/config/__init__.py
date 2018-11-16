@@ -12,7 +12,7 @@ CaseDetailDao_index = 5
 case_plan_schema_detail_index = 5
 
 #################################
-TABLE_NAME_SUFFIX = ""  # 分表后缀
+TABLE_NAME_SUFFIX = "_2016_01"  # 分表后缀
 WHERE_IDX_CONDITION = " and create_date <= '2018-10-30 00:00:00'"
 # ------------------数据库配置--begain----------------------------
 CASE_DETAIL_MASTER_WHERE_CONDITION_TIME = ""
@@ -29,13 +29,13 @@ CASE_PLAN_SCHEMA_DETAIL_MASTER_WHERE_CONDITION_SQL = ""
 # ------------------数据库配置---end----------------------------
 # FORMAT_IDX_CONDITION = " and create_date between '2018-10-31 14:11:00' and '2018-10-31 15:00:00'"
 # -----------------
-IP_PROXY_CACHE = 8  # IP代理池设置成5个ip
+IP_PROXY_CACHE = 4  # IP代理池设置成5个ip
 IP_PROXY_CACHE_TIME = 2  # 2分钟失效
 IP_PROXY_INSPECT_URL = "http://wenshu.court.gov.cn/"
 IP_PROXY_WAIT_NUM = 5  # ip代理少于成功次数
-PEER_DOC_WEIGHT = 16
+PEER_DOC_WEIGHT = 12
 DOC_BATCH_COUNT = IP_PROXY_CACHE * PEER_DOC_WEIGHT
-DOC_RETRY_COUNT = PEER_DOC_WEIGHT * 5
+DOC_RETRY_COUNT = PEER_DOC_WEIGHT * 6
 #################################
 
 ###############################

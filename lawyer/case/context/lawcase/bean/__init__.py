@@ -11,6 +11,7 @@ class LawyerInfoBean(object):
     PROCESS_2 = 2  # 处理失败
     PROCESS_3 = 3  # 处理成功
     PROCESS_4 = 4  # 处理部分成功,超过200条记录,需要特殊处理
+    PROCESS_5 = 5  # 没有返回正确的数据
 
     def __init__(self, lawyer_id, lawyer_name, law_firm, phone, process, page_index=1, page=PAGE_NUM):
         self.lawyer_id = lawyer_id
@@ -72,6 +73,12 @@ class CaseLawyerDocBean(object):
     SYNC_STATUS_11 = "11"  # 格式化中
     SYNC_STATUS_19 = "19"  # 格式化失败
     SYNC_STATUS_20 = "20"  # 格式化成功
+    # ----------------step3---------------------
+    SYNC_STATUS_21 = "21"  # 同步数据中
+    SYNC_STATUS_29 = "29"  # 同步失败
+    SYNC_STATUS_30 = "30"  # 同步成功
+    # ----------------exception---------------------
+    SYNC_STATUS_0E = "0E"  # 以前存在文档,在需要再下载
 
     def __init__(self, doc_id, lawyer_id, spider_id, sync_status):
         self.doc_id = doc_id

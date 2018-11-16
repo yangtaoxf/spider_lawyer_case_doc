@@ -19,4 +19,4 @@ with open(current_Path + '/rawinflate_20180820.js') as f:
     wen_shu_js += f.read()
 with open(current_Path + "/wenshu_20180820.js") as f:
     wen_shu_js += f.read()
-logging.info(wen_shu_js)
+# logging.info(wen_shu_js)

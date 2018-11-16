@@ -227,7 +227,7 @@ class CaseDetailDao(object):
             state = CASE_DETAIL_STATE_08
         try:
             sql = '''UPDATE case_detail{} SET state=%s WHERE doc_id=%s'''.format(TABLE_NAME_SUFFIX)
-            logging.info("===STATE: {} ***{}===".format(state, ip_proxy_item))
+            logging.info("[=*= SUCCESS =*=] 【{}】 {}".format(state, ip_proxy_item))
             update(sql, (state, doc_id,))
             CaseDocDao.insert_into_case_doc(doc_id=doc_id, java_script=java_script, content=None, html=None)
         except Exception as e:

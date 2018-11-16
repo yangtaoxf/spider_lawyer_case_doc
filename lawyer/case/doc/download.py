@@ -187,23 +187,23 @@ async def async_get_data_javascript_callback(doc_id, callback=None):
             assert writ_content.status == 200
             # 检查内容是否正确*** 开始 ***
             if java_script and "window.location.href" in java_script:
-                logging.info("===ip已经可能被封===")
+                logging.info("---ip已经可能被封--- 【{}】".format(ip_proxy_item))
                 proxy_pool.fail(ip_proxy_item, multiple=6)
                 return
             elif java_script and "<title>出错啦</title>" in java_script:
-                logging.info("===获取内容失败===")
+                logging.info("---获取内容失败--- 【{}】".format(ip_proxy_item))
                 proxy_pool.fail(ip_proxy_item, multiple=1)
                 return
             # 检查内容是否正确*** 结束 ***
             callback.callback_success(doc_id, java_script, ip_proxy_item)
         except AssertionError:
-            logging.error("AssertionError" + str(writ_content.status))
+            logging.error("---AssertionError--- {} 【{}】".format(str(writ_content.status), ip_proxy_item))
             if writ_content.status == 503:
-                logging.warning("503,重试.")
+                proxy_pool.fail(ip_proxy_item)
             elif writ_content.status == 429:
-                logging.warning("429,太多服务请求.")
+                pass
             elif writ_content.status == 502:
-                logging.warning("502,网关异常.")
+                pass
             else:
                 logging.error("writ_content.status={} proxy={}".format(str(writ_content.status), proxy))
                 proxy_pool.fail(ip_proxy_item)
@@ -211,26 +211,26 @@ async def async_get_data_javascript_callback(doc_id, callback=None):
             logging.error("===没有获取使用ip===")
             proxy_pool.refresh(ip_proxy_item)
         except ClientProxyConnectionError:
-            logging.error("ClientProxyConnectionError")
+            logging.error("---ClientProxyConnectionError--- {}".format(ip_proxy_item))
             proxy_pool.fail(ip_proxy_item, multiple=10)
         except ClientOSError:
-            logging.error("ClientOSError")
+            logging.error("---ClientOSError--- {}".format(ip_proxy_item))
             proxy_pool.fail(ip_proxy_item)
         except aiohttp.client_exceptions.ClientPayloadError:
-            logging.error("ClientPayloadError")
+            logging.error("---ClientPayloadError--- {}".format(ip_proxy_item))
             proxy_pool.fail(ip_proxy_item)
         except TimeoutError:
-            logging.error("TimeoutError")
+            logging.error("---TimeoutError--- {}".format(ip_proxy_item))
             proxy_pool.fail(ip_proxy_item)
         except concurrent_TimeoutError:
-            logging.error("concurrent_TimeoutError")
+            logging.error("---concurrent_TimeoutError--- {}".format(ip_proxy_item))
             proxy_pool.fail(ip_proxy_item)
         except aiohttp.client_exceptions.ServerDisconnectedError:
-            logging.error("ServerDisconnectedError")
+            logging.error("---ServerDisconnectedError--- {}".format(ip_proxy_item))
             proxy_pool.fail(ip_proxy_item, multiple=2)
         except Exception:
             callback.callback_fail(doc_id)
-            proxy_pool.refresh(ip_proxy_item)
+            proxy_pool.fail(ip_proxy_item, multiple=10)
             logging.exception("error=>:")
         finally:
             if writ_content:
@@ -258,17 +258,17 @@ async def async_get_data_javascript_step2(client, doc_id):
             url='http://wenshu.court.gov.cn/CreateContentJS/CreateContentJS.aspx?DocID={}'.format(doc_id),
             proxy_headers=headers,
             data=payload,
-            timeout=15,
+            timeout=18,
             proxy=proxy)
         java_script = await writ_content.text()
         assert writ_content.status == 200
         # 检查内容是否正确*** 开始 ***
         if java_script and "window.location.href" in java_script:
-            logging.info("===ip已经可能被封===")
+            logging.info("---ip已经可能被封--- 【{}】".format(ip_proxy_item))
             proxy_pool.fail(ip_proxy_item, multiple=6)
             return
         elif java_script and "<title>出错啦</title>" in java_script:
-            logging.info("===获取内容失败===")
+            logging.info("---获取内容失败--- 【{}】".format(ip_proxy_item))
             proxy_pool.fail(ip_proxy_item, multiple=1)
             return
         # 检查内容是否正确*** 结束 ***
@@ -276,13 +276,13 @@ async def async_get_data_javascript_step2(client, doc_id):
         CaseDetailDao.remove_doc_id(doc_id)
         proxy_pool.success(ip_proxy_item)
     except AssertionError:
-        logging.error("AssertionError" + str(writ_content.status))
+        logging.error("---AssertionError--- {} 【{}】".format(str(writ_content.status), ip_proxy_item))
         if writ_content.status == 503:
-            logging.warning("503,重试.")
+            proxy_pool.fail(ip_proxy_item)
         elif writ_content.status == 429:
-            logging.warning("429,太多服务请求.")
+            pass
         elif writ_content.status == 502:
-            logging.warning("502,网关异常.")
+            pass
         else:
             logging.error("writ_content.status={} proxy={}".format(str(writ_content.status), proxy))
             proxy_pool.fail(ip_proxy_item)
@@ -290,22 +290,22 @@ async def async_get_data_javascript_step2(client, doc_id):
         logging.error("===没有获取使用ip===")
         proxy_pool.refresh(ip_proxy_item)
     except ClientProxyConnectionError:
-        logging.error("ClientProxyConnectionError")
+        logging.error("---ClientProxyConnectionError--- {}".format(ip_proxy_item))
         proxy_pool.fail(ip_proxy_item, multiple=10)
     except ClientOSError:
-        logging.error("ClientOSError")
+        logging.error("---ClientOSError--- {}".format(ip_proxy_item))
         proxy_pool.fail(ip_proxy_item)
     except aiohttp.client_exceptions.ClientPayloadError:
-        logging.error("ClientPayloadError")
+        logging.error("---ClientPayloadError--- {}".format(ip_proxy_item))
         proxy_pool.fail(ip_proxy_item)
     except TimeoutError:
-        logging.error("TimeoutError")
+        logging.error("---TimeoutError--- {}".format(ip_proxy_item))
         proxy_pool.fail(ip_proxy_item)
     except concurrent_TimeoutError:
-        logging.error("concurrent_TimeoutError")
+        logging.error("---concurrent_TimeoutError--- {}".format(ip_proxy_item))
         proxy_pool.fail(ip_proxy_item)
     except aiohttp.client_exceptions.ServerDisconnectedError:
-        logging.error("ServerDisconnectedError")
+        logging.error("---ServerDisconnectedError--- {}".format(ip_proxy_item))
         proxy_pool.fail(ip_proxy_item, multiple=2)
     except Exception:
         CaseDetailDao.remove_doc_id(doc_id)

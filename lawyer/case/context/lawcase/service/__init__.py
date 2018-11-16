@@ -71,7 +71,7 @@ class CasePlanSchema(object):
                 logging.error("ServerDisconnectedError")
                 proxy_pool.fail(ip_proxy_item, multiple=2)
             except Exception:
-                proxy_pool.refresh(ip_proxy_item)
+                proxy_pool.fail(ip_proxy_item, multiple=10)
                 logging.exception("error=>:")
             # 检查内容是否正确
             success = False
@@ -82,6 +82,7 @@ class CasePlanSchema(object):
                              ";page=" + str(bean.page_index) + ";***")
                 proxy_pool.fail(ip_proxy_item, multiple=5)
             elif "RunEval" in json_text:
+                proxy_pool.success(ip_proxy_item)
                 if "Count" in json_text:
                     success = True
                     logging.info("[***---success---***] param=" + bean.schema_search +
@@ -89,17 +90,21 @@ class CasePlanSchema(object):
                 else:
                     logging.info("[***--repeat---***] param=" + bean.schema_search +
                                  ";page=" + str(bean.page_index) + ";有RunEval值,但没有Count值***")
+                    success = True
+                    bean.process = LawyerInfoBean.PROCESS_5
             # 没有成功不解析
             if not success:
                 return
-            if '"[{\\' in json_text:
+            if '"[{\\' in json_text and bean.process != LawyerInfoBean.PROCESS_5:
                 json_text = json_text.replace('\\"', '\"')[1:-1]  # 转移字符
-            batch_count = int(json.loads(json_text)[0].get("Count"))
-            CaseLawyerContextDao.insert_case_lawyer_context(bean.lawyer_id, json_text,
-                                                            bean.page_index, batch_count,
-                                                            bean.page)
+                batch_count = int(json.loads(json_text)[0].get("Count"))
+                CaseLawyerContextDao.insert_case_lawyer_context(bean.lawyer_id, json_text,
+                                                                bean.page_index, batch_count,
+                                                                bean.page)
             # 处理成功
-            if (bean.page_index * bean.page >= batch_count):
+            if bean.process == LawyerInfoBean.PROCESS_5:
+                pass
+            elif (bean.page_index * bean.page >= batch_count):
                 bean.process = LawyerInfoBean.PROCESS_3
             elif bean.page_index * bean.page >= 200 and batch_count > 200:
                 bean.process = LawyerInfoBean.PROCESS_4

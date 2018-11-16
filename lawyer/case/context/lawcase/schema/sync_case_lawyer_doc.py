@@ -14,27 +14,27 @@ sys.path.append(__root_path_2)
 # ------------------
 import logging
 import time
-from lawcase.service.process import LawCaseContextProcessor
-from lawcase.util.redis_task import RedisCaseLawyerContextMasterHelper
-from multiprocessing import cpu_count, Pool
+
+from lawcase.service.pipeline import SyncCaseLawyerDocPipeline
+from lawcase.util.redis_task import RedisSyncCaseLawyerDocMaster
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
                     datefmt='%a, %d %b %Y %H:%M:%S', filemode='a', filename="case_lawyer_context_starter.log")
 
 if __name__ == '__main__':
-    __cpu_count = cpu_count()
     while True:
-        logging.info("=*= 系统cpu个数是:" + str(__cpu_count))
-        bean_list = RedisCaseLawyerContextMasterHelper.extract_case_lawyer_context(extract_num=int(__cpu_count))
-        if not bean_list:
+        data_list = RedisSyncCaseLawyerDocMaster.extract(extract_num=1)
+        if not data_list:
             logging.info("=*=没有任务，休眠60秒=*=")
             time.sleep(60)
             continue
-        logging.info("=*= batch proceed begain =*=")
-        pool = Pool(__cpu_count)
-        for data in bean_list:
-            bean = RedisCaseLawyerContextMasterHelper.wrapper(data=data)
-            pool.apply_async(LawCaseContextProcessor.proceed, args=(bean,))
-        pool.close()
-        pool.join()
-        logging.info("=*= batch proceed end =*=")
+        for data in data_list:
+            SyncCaseLawyerDocPipeline.sync(lawyer_id=data["lawyer_id"],
+                                           doc_id=data["doc_id"],
+                                           html=data["html"],
+                                           caseType=data["master_domain"],
+                                           casenum=data["json_data_number"],
+                                           title=data["json_data_name"],
+                                           court=data["json_data_court"],
+                                           )
+            

@@ -1,4 +1,17 @@
 # coding=utf-8
+# ------------------添加root_path
+import os
+import sys
+
+current_Path = os.path.abspath(os.path.dirname(__file__))
+root_path = os.path.split(current_Path)[0]
+__root_path = root_path.split(sep="context")[0]
+__root_path_1 = __root_path + "context" + os.sep
+__root_path_2 = __root_path + "doc" + os.sep
+print(__root_path_1, "========", __root_path_2)
+sys.path.append(__root_path_1)
+sys.path.append(__root_path_2)
+# ------------------
 from proxy.pool import ProxyPool
 import asyncio
 from lawcase.service import CasePlanSchema

@@ -12,7 +12,7 @@ print(__root_path_1, "========", __root_path_2)
 sys.path.append(__root_path_1)
 sys.path.append(__root_path_2)
 # ------------------
-from lawcase.master import redis_case_lawyer_task_master
+from lawcase.master import redis_sync_case_lawyer_doc_master
 import logging
 import time
 
@@ -20,6 +20,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(
                     datefmt='%a, %d %b %Y %H:%M:%S', filemode='a', )
 if __name__ == "__main__":
     while True:
-        redis_case_lawyer_task_master(batch_num=10)
+        redis_sync_case_lawyer_doc_master(batch_num=100)
         logging.info("=*= 休眠5秒 =*=")
         time.sleep(5)

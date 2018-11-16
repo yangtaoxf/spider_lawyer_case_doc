@@ -1,0 +1,22 @@
+{
+  "numFound": 1,
+  "qtime": 97,
+  "list": [
+    {
+      "sourceFrom": null,
+      "sourceId": null,
+      "title": "锦州农村商业银行股份有限公司渤海支行与颜凤婷、张晓东金融借款合同纠纷一审民事裁定书",
+      "court": "锦州市太和区人民法院",
+      "casenum": "（2017）辽0791民初552号",
+      "createDate": null,
+      "judgeDate": "2017-07-18",
+      "caseType": "2",
+      "content": "执行人未主动履行生效判决确定的义务，申请执行人提起执行申请\u003cfont color\u003dred\u003e程序\u003c/font\u003e，本院于2017年3月1日立案执行。生效判决确定的义务为：“一、被告吕宝惜自本判决发生法律效力",
+      "id": "0000021e-a632-46d6-9cac-a7da009ddbb4",
+      "isExist": 0,
+      "province": "四川"
+    }
+  ],
+  "success": true,
+  "message": ""
+}

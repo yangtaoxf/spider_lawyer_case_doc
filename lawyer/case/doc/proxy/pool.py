@@ -6,7 +6,7 @@ import os
 import re
 import sys
 import threading
-import time
+import time, datetime
 import random
 from wsgiref.simple_server import make_server
 
@@ -33,7 +33,7 @@ class IpProxyItem(object):
         self.success_count = 0  # 该ip爬取成功次数
         self.recent_fail_count = 0  # 该ip连续失败次数
         self.refresh = False  # 是否需要更新ip
-        self.create_date = time.time()  # 该代理ip更新时间
+        self.create_date = datetime.datetime.now()  # 该代理ip更新时间
 
     def success(self):
         """
@@ -42,6 +42,9 @@ class IpProxyItem(object):
         """
         self.recent_fail_count = 0
         self.success_count += 1
+        if self.refresh:
+            logging.info("########### IP重新置为可用{} ##################".format(str(self.proxies)))
+            self.refresh = False
 
     def fail(self, multiple=1):
         """
@@ -52,8 +55,9 @@ class IpProxyItem(object):
         self.recent_fail_count += multiple
         self.fail_count += + 1
         if self.recent_fail_count >= DOC_RETRY_COUNT:  # 连续失败次数超过配置最大重试次数参数，需要更换ip
-            logging.info("===fail IP置为无效===:{}".format(self.proxies))
-            self.refresh = True
+            if not self.refresh:
+                self.refresh = True
+                logging.info("===fail IP置为无效===:{}".format(self.proxies))
 
     def refresh(self):
         """
@@ -77,12 +81,13 @@ class IpProxyItem(object):
         return __ret
 
     def __str__(self):
-        return "success_count={};recent_fail_count={};fail_count={};refresh={};proxies={}".format(
+        return "success_count={};recent_fail_count={};fail_count={};refresh={};proxies={};create_date={}".format(
             self.success_count,
             self.recent_fail_count,
             self.fail_count,
             self.refresh,
             str(self.proxies["http"]) if "http" in self.proxies else None,
+            self.create_date,
         )
 
 
@@ -154,6 +159,11 @@ class ProxyPool(object):
             logging.info("==={} [{}]".format(key, value))
             if not value or value.refresh:
                 update_key.append(key)
+                if hasattr(value, "create_date"):
+                    if (datetime.datetime.now() - value.create_date).seconds < 120:  # 2内分钟不提取
+                        logging.warning("[=*= 失败率过高=*=],暂时不提取新IP 【{}】".format(value))
+                        update_key.remove(key)
+
         length = len(update_key)
         if length > 0:
             proxis = IpProxyItem.build(number=length)
@@ -169,6 +179,10 @@ class ProxyPool(object):
         :param multiple:
         :return:
         """
+        ip_proxy_item.fail(multiple)
+
+    @staticmethod
+    def warn(ip_proxy_item, multiple=0.5):
         ip_proxy_item.fail(multiple)
 
     @staticmethod
@@ -255,11 +269,11 @@ class IpPort(object):
             # "http://47.107.111.163:8123/download/doc/?order=cbda12cf21444c55a04c33deb4a9f938&json=1&sep=3"
             # "http://47.107.111.163:8123/list/context/?order=cbda12cf21444c55a04\c33deb4a9f938&json=1&sep=3"
             # "http://47.107.111.163:8123/list/context/?tset=123123"
-            with requests.get("http://47.107.111.163:8123/download/doc_v3/number_{}_".format(number)) as ret:
-                logging.info(ret.text)
-                dj = json.loads(ret.text)
-                for it in dj['data']:
-                    __ret.append(it.get("IP"))
+            ret = requests.get("http://47.107.111.163:8123/download/doc_v3/number_{}_".format(number))
+            logging.info(ret.text)
+            dj = json.loads(ret.text)
+            for it in dj['data']:
+                __ret.append(it.get("IP"))
             # return dj['data'][0].get("ip") + ":" + str(dj['data'][0].get("port"))
             # return dj['data'][0].get("IP")
             # return dj['data'][0].get("ip") + ":" + str(dj['data'][0].get("port"))

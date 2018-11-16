@@ -1,4 +1,17 @@
 # coding=utf-8
+# ------------------添加root_path
+import os
+import sys
+
+current_Path = os.path.abspath(os.path.dirname(__file__))
+root_path = os.path.split(current_Path)[0]
+__root_path = root_path.split(sep="context")[0]
+__root_path_1 = __root_path + "context" + os.sep
+__root_path_2 = __root_path + "doc" + os.sep
+print(__root_path_1, "========", __root_path_2)
+sys.path.append(__root_path_1)
+sys.path.append(__root_path_2)
+# ------------------
 import asyncio
 import logging
 import time
@@ -50,7 +63,7 @@ class CallBack(object):
         else:
             logging.warning("下载文书发生错误:->" + str(java_script))
         try:
-            logging.info("===STATE: {} ***{}===".format(state, ip_proxy_item))
+            logging.info("[=*= SUCCESS =*=] 【{}】 {}".format(state, ip_proxy_item))
             CaseLawyerDocDao.update_sync_status(doc_id=doc_id, state=state, java_script=java_script)
         except Exception as e:
             logging.error(e)
@@ -58,7 +71,7 @@ class CallBack(object):
     @staticmethod
     def callback_fail(doc_id):
         try:
-            logging.info("===STATE: {} ***{}===".format("FAIL", "发生未识别的错误"))
+            logging.info("[=*= FAIL =*=] {} ***{}***".format("FAIL", "发生未识别的错误"))
             CaseLawyerDocDao.update_sync_status(doc_id=doc_id, state=CaseLawyerDocBean.SYNC_STATUS_09, )
         except Exception as e:
             logging.error(e)
@@ -70,7 +83,6 @@ if __name__ == '__main__':
     pool.change_ip_proxy_cache(CaseLawyerDocConfig.IP_PROXY_CACHE_NUM__)  # 设置代理池一个ip
     while True:
         loop = asyncio.get_event_loop()
-        pool.validate_init_ip_proxy()
         extract_num = CaseLawyerDocConfig.SPIDER_BATCH_NUM - len(task_pool)
         data_list = RedisCaseLawyerDocMaster.extract(extract_num=extract_num)
         task_pool.extend(data["doc_id"] for data in data_list)

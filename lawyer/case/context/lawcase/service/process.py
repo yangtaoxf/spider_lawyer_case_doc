@@ -19,20 +19,21 @@ class LawCaseContextProcessor(object):
     获取案例抓取计划
     """
 
-    def __init__(self, bean):
-        self.context_bean = bean
+    # def __init__(self, bean):
+    #     self.context_bean = bean
 
-    def proceed(self):
-        if not self.context_bean:
+    @staticmethod
+    def proceed(context_bean):
+        if not context_bean:
             logging.warning("=*= LawCaseContextProcessor proceed没有数据,休眠 5秒 =*=")
             time.sleep(5)
             return
-        assert isinstance(self.context_bean, CaseLawyerContextBean)
+        assert isinstance(context_bean, CaseLawyerContextBean)
 
-        spider_id = self.context_bean.id
-        lawyer_id = self.context_bean.lawyer_id
-        json_text = self.context_bean.page_json
-        logging.info("spider_id={} lawyer_id={} bean={}".format(spider_id, lawyer_id, str(self)))
+        spider_id = context_bean.id
+        lawyer_id = context_bean.lawyer_id
+        json_text = context_bean.page_json
+        logging.info("spider_id={} lawyer_id={} bean={}".format(spider_id, lawyer_id, str(context_bean)))
         try:
             if "RunEval" in json_text:
                 if '"[{\\' in json_text:
@@ -66,15 +67,15 @@ class LawCaseContextProcessor(object):
                     except IntegrityError:
                         logging.exception("发生了错误 IntegrityError")
                     except Exception:
-                        self.context_bean.status = CaseLawyerContextBean.STATUS_09
+                        context_bean.status = CaseLawyerContextBean.STATUS_09
                         logging.exception("发生了错误")
-                if self.context_bean.status == CaseLawyerContextBean.STATUS_01:
-                    self.context_bean.status = CaseLawyerContextBean.STATUS_10
+                if context_bean.status == CaseLawyerContextBean.STATUS_01:
+                    context_bean.status = CaseLawyerContextBean.STATUS_10
         except Exception:
             logging.exception("=*= 严重未知错误 =*=")
-            self.context_bean.status = CaseLawyerContextBean.STATUS_09
+            context_bean.status = CaseLawyerContextBean.STATUS_09
         finally:
-            CaseLawyerContextDao.update_state(state=self.context_bean.status, _id=self.context_bean.id)
+            CaseLawyerContextDao.update_state(state=context_bean.status, _id=context_bean.id)
 
     def __str__(self):
         return "[LawCaseContextProcessor context_bean]=*= {}".format(str(self.context_bean))

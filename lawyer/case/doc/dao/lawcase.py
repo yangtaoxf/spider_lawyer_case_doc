@@ -325,7 +325,8 @@ class CaseDocDao(object):
             if data.get("doc_javascript"):
                 data["exists"] = False
             else:
-                data["doc_javascript"] = CaseDocDao.select_case_doc(doc_id=data["doc_id"]).get("java_script")
+                case_doc = CaseDocDao.select_case_doc(doc_id=data["doc_id"])
+                data["doc_javascript"] = case_doc.get("java_script") if case_doc else ""
                 data["exists"] = True
             update("UPDATE case_detail{} SET state=%s WHERE doc_id=%s".format(TABLE_NAME_SUFFIX),
                    (CASE_DETAIL_STATE_11_NEW, data.get("doc_id")))
@@ -340,7 +341,7 @@ class CaseDocDao(object):
         return row
 
     @staticmethod
-    def insert_into_case_doc(doc_id, content, html, java_script, exists=False):
+    def insert_into_case_doc(doc_id, content, html, java_script):
         template_sql = '''INSERT INTO `case_doc{}`
          (`doc_id`,
           `content`,
@@ -348,9 +349,9 @@ class CaseDocDao(object):
           `java_script`,
           `create_time`,
           `update_time`
-          )  VALUES (%s, %s, %s, %s, now(), now()) on DUPLICATE KEY UPDATE `java_script`=%s,`update_time`=now()'''.format(
+          )  VALUES (%s, %s, %s, %s, now(), now()) on DUPLICATE KEY UPDATE `java_script`=%s,`html`=%s, `update_time`=now()'''.format(
             TABLE_NAME_SUFFIX)
-        return insert(template_sql, (doc_id, content, html, java_script, java_script))
+        return insert(template_sql, (doc_id, content, html, java_script, java_script, html))
 
     # if exists:
     #     CaseDocDao.update_case_doc(content, html, doc_id, java_script)

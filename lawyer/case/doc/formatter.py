@@ -70,8 +70,16 @@ class DocContextJsParser(object):
         """
         __ret = Result()
         __data_list = re.findall(r'JSON\.stringify\(([\s\S]*?)\);', java_script)
+        if not __data_list:
+            logging.warning("java_script没有找到JSON= {} ".format(java_script))
+            __ret.fail(msg="没有找到JSON stringify")
+            return __ret
         data = json.loads(__data_list.pop())
         __html_list = re.findall(r'\\"Html\\":\\"(.*?)\\"}";', java_script)
+        if not __html_list:
+            logging.warning("java_script没有Html标签= {}".format(java_script))
+            __ret.fail(msg="没有找到JSON stringify")
+            return __ret
         __html = __html_list.pop()
         __html = __html.replace("01lydyh01", "\'")
         for old, new in _css_change_map.items():

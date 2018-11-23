@@ -13,7 +13,7 @@ class LawyerInfoBean(object):
     PROCESS_4 = 4  # 处理部分成功,超过200条记录,需要特殊处理
     PROCESS_5 = 5  # 没有返回正确的数据
 
-    def __init__(self, lawyer_id, lawyer_name, law_firm, phone, process, page_index=1, page=PAGE_NUM):
+    def __init__(self, lawyer_id, lawyer_name, law_firm, phone, process, casenum, page_index=1, page=PAGE_NUM):
         self.lawyer_id = lawyer_id
         self.lawyer_name = lawyer_name
         self.law_firm = law_firm
@@ -21,6 +21,7 @@ class LawyerInfoBean(object):
         self.process = process
         self.page_index = page_index
         self.page = page
+        self.casenum = casenum
 
     def __str__(self):
         return "[lawyer_name={} law_firm={} process={} page_index={} page={} lawyer_id={} phone={}]".format(

@@ -11,7 +11,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 import aiohttp
 from aiohttp.client_exceptions import ClientProxyConnectionError as ClientProxyConnectionError
 from concurrent.futures._base import TimeoutError as concurrent_TimeoutError
-import formatter
+import doc_formatter
 from proxy.pool import ProxyPool
 from dao.lawcase import CaseDetailDao
 from aiohttp.client_exceptions import ClientOSError
@@ -49,7 +49,7 @@ def download_doc_html(doc_id):
         if page is None or len(page) < 5:
             pass
         else:
-            format_page = formatter.html_css_format(page)
+            format_page = doc_formatter.html_css_format(page)
         logging.info(format_page)
     except Exception as e:
         logging.exception(e)
@@ -81,7 +81,7 @@ def proceed_data_javascript(html=config.proceed_data_javascript_html, ):
         if page is None or len(page) < 5:
             pass
         else:
-            format_page = formatter.html_css_format(page)
+            format_page = doc_formatter.html_css_format(page)
             logging.info(format_page)
     except Exception as e:
         logging.error(e)
@@ -110,7 +110,7 @@ def proceed_local_javascript(java_script, html=config.proceed_data_javascript_ht
         if page is None or len(page) < 5:
             pass
         else:
-            format_page = formatter.html_css_format(page)
+            format_page = doc_formatter.html_css_format(page)
             logging.info(format_page)
     except Exception as e:
         logging.error(e)

@@ -19,7 +19,7 @@ from lawcase.service.pipeline import SyncCaseLawyerDocPipeline
 from lawcase.util.redis_task import RedisSyncCaseLawyerDocMaster
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
-                    datefmt='%a, %d %b %Y %H:%M:%S', filemode='a', filename="case_lawyer_context_starter.log")
+                    datefmt='%a, %d %b %Y %H:%M:%S')
 
 if __name__ == '__main__':
     while True:
@@ -37,4 +37,3 @@ if __name__ == '__main__':
                                            title=data["json_data_name"],
                                            court=data["json_data_court"],
                                            )
-            

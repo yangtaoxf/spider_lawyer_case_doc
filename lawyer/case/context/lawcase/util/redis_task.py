@@ -6,6 +6,7 @@ import redis
 
 from lawcase.bean import LawyerInfoBean, CaseLawyerContextBean, CaseLawyerDocBean
 from lawcase.config import TABLE_NAME_SUFFIX
+from util.decorator import log_cost_time
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
                     datefmt='%a, %d %b %Y %H:%M:%S', filemode='a', )
@@ -67,6 +68,7 @@ class RedisCaseLawyerTaskMasterHelper(RedisCaseLawyerTaskMaster):
                                       process=data["process"],
                                       page_index=data["pageindex"],
                                       page=data["page"],
+                                      casenum=data.get("casenum")
                                       )
                 logging.info(bean)
                 _ret.append(bean)
@@ -279,6 +281,7 @@ class RedisSyncCaseLawyerDocMaster(object):
         logging.info("=*=RedisSyncCaseLawyerDocMaster refresh === OK =*=")
 
     @staticmethod
+    @log_cost_time(describe="提取任务")
     def extract(key=KEY, extract_num=50) -> list:
         _ret = []
         for _ in range(extract_num):

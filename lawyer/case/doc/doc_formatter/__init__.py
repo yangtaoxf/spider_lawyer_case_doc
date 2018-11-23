@@ -1,8 +1,10 @@
 # coding=utf8
+
 import logging
 import re
 import json
 
+__all__ = ['Result', 'DocContextJsParser', "lawyer_case_case_type"]
 from bs4 import BeautifulSoup
 
 _css_change_map = {
@@ -53,7 +55,8 @@ class Result(object):
         self.msg = msg
 
     def __str__(self):
-        return str(self.result) + str(self.data) + str(self.html)
+        return str(self.result) + str(self.master_domain) + str(self.province) + str(self.court_level) + str(
+            self.msg)
 
     def __repr__(self):
         return self.__str__()
@@ -61,9 +64,11 @@ class Result(object):
 
 class DocContextJsParser(object):
     from config import ADS_FIELD_KEY, COURT_LEVEL
+    from util.decorator import log_cost_time
     ADS_FIELD_DATA = ADS_FIELD_KEY
 
     @staticmethod
+    @log_cost_time(describe="格式化文档")
     def parse_convert_html(java_script, doc_title=None, doc_court=None, doc_judge_date=None) -> Result:
         """
         转移html文档
@@ -117,15 +122,25 @@ class DocContextJsParser(object):
         计算法院等级
         :return:
         """
-        level = DocContextJsParser.COURT_LEVEL.get(court_name)
-        if not level:
-            logging.warning("court_name={}***没有对应的法院等级".format(court_name))
-            __court_name = data.get("法院名称")
-            logging.info("__court_name={}***".format(__court_name))
-            level = DocContextJsParser.COURT_LEVEL.get(__court_name)
-        if not level:
-            logging.warning("[***均没有对应的法院***]")
+
+        def court_level(court_name):
             level = "99"
+            if court_name:
+                if "最高人民法院" in court_name:
+                    level = "1"
+                elif "高级" in court_name:
+                    level = "2"
+                elif "中级" in court_name:
+                    level = "3"
+                else:
+                    level = "4"
+            return level
+
+        if court_name:  # 第一步，使用court_name
+            level = court_level(court_name)
+        else:  # 若没有，使用data
+            __court_name = data.get("法院名称")
+            level = court_level(__court_name)
         ret.court_level = level
         return ret
 

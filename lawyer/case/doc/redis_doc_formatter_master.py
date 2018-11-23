@@ -4,5 +4,5 @@ import time
 
 if __name__ == "__main__":
     while True:
-        redis_case_doc_format_master(10)
+        redis_case_doc_format_master(2000)
         time.sleep(5)

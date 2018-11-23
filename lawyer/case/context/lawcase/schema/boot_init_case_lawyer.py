@@ -26,7 +26,7 @@ if __name__ == "__main__":
     remark = "新增批次日期{}".format(date)
     logging.info("=*= boot_init_case_lawyer remark is[{}]=*=".format(remark))
     sql = """
-    INSERT INTO case_lawyer_2018_11 (id,office,phone,realname,remark)
+    INSERT INTO case_lawyer_2018_11 (id,office,phone,realname,remarks)
         SELECT c.id,c.law_firm,c.phone,c.real_name,'{}'
         FROM lawyer c where status = 4 and not exists(select 1 from case_lawyer_2018_11 d where c.id=d.id);
     """.format(remark)

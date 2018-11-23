@@ -133,6 +133,10 @@ class ProxyPool(object):
         return ProxyPool._instance
 
     @staticmethod
+    def get_ip_proxy_cache():
+        return ProxyPool._ip_proxy_cache
+
+    @staticmethod
     def change_ip_proxy_cache(cache=IP_PROXY_CACHE):
         ProxyPool._ip_proxy_cache_detail.clear()
         ProxyPool._ip_proxy_cache = cache

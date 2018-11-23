@@ -22,10 +22,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(
                     datefmt='%a, %d %b %Y %H:%M:%S', filemode='a', filename="case_lawyer_context_starter.log")
 
 if __name__ == '__main__':
-    __cpu_count = cpu_count()
+    # __cpu_count = cpu_count()
     while True:
-        logging.info("=*= 系统cpu个数是:" + str(__cpu_count))
-        bean_list = RedisCaseLawyerContextMasterHelper.extract_case_lawyer_context(extract_num=int(__cpu_count))
+        # logging.info("=*= 系统cpu个数是:" + str(__cpu_count))
+        bean_list = RedisCaseLawyerContextMasterHelper.extract_case_lawyer_context(extract_num=1)
         if not bean_list:
             logging.info("=*=没有任务，休眠60秒=*=")
             time.sleep(60)

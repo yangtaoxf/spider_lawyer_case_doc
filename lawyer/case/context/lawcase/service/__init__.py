@@ -34,7 +34,7 @@ class CasePlanSchema(object):
         if not bean:
             logging.warning("没有任务")
             return False
-        if bean.page_index == 0:
+        if bean.page_index == 0 or bean.page_index is None:
             bean.page_index = 1
         try:
             json_text = None
@@ -48,31 +48,31 @@ class CasePlanSchema(object):
                                                   proxies=proxies)
             except AssertionError:
                 proxy_pool.fail(ip_proxy_item, multiple=1)
-                logging.error("===AssertionError===")
+                logging.error("=== AssertionError === {}".format(ip_proxy_item))
             except NotIpProxyException:
-                logging.error("===没有获取使用ip===")
+                logging.error("=== 没有获取使用ip ===")
                 proxy_pool.refresh(ip_proxy_item)
             except ClientProxyConnectionError:
-                logging.error("ClientProxyConnectionError")
+                logging.error("=== ClientProxyConnectionError {}".format(ip_proxy_item))
                 proxy_pool.fail(ip_proxy_item, multiple=10)
             except ClientOSError:
-                logging.error("ClientOSError")
+                logging.error("=== ClientOSError {}".format(ip_proxy_item))
                 proxy_pool.fail(ip_proxy_item)
             except aiohttp.client_exceptions.ClientPayloadError:
-                logging.error("ClientPayloadError")
+                logging.error("=== ClientPayloadError {}".format(ip_proxy_item))
                 proxy_pool.fail(ip_proxy_item)
             except TimeoutError:
-                logging.error("TimeoutError")
+                logging.error("=== TimeoutError {}".format(ip_proxy_item))
                 proxy_pool.fail(ip_proxy_item)
             except concurrent.futures._base.TimeoutError:
-                logging.error("concurrent_TimeoutError")
+                logging.error("=== concurrent_TimeoutError {}".format(ip_proxy_item))
                 proxy_pool.fail(ip_proxy_item)
             except aiohttp.client_exceptions.ServerDisconnectedError:
-                logging.error("ServerDisconnectedError")
+                logging.error("=== ServerDisconnectedError {}".format(ip_proxy_item))
                 proxy_pool.fail(ip_proxy_item, multiple=2)
             except Exception:
                 proxy_pool.fail(ip_proxy_item, multiple=10)
-                logging.exception("error=>:")
+                logging.exception("error=>: {}".format(ip_proxy_item))
             # 检查内容是否正确
             success = False
             if not json_text:
@@ -98,6 +98,7 @@ class CasePlanSchema(object):
             if '"[{\\' in json_text and bean.process != LawyerInfoBean.PROCESS_5:
                 json_text = json_text.replace('\\"', '\"')[1:-1]  # 转移字符
                 batch_count = int(json.loads(json_text)[0].get("Count"))
+                bean.casenum = batch_count
                 CaseLawyerContextDao.insert_case_lawyer_context(bean.lawyer_id, json_text,
                                                                 bean.page_index, batch_count,
                                                                 bean.page)
@@ -110,12 +111,11 @@ class CasePlanSchema(object):
                 bean.process = LawyerInfoBean.PROCESS_4
             else:
                 bean.page_index = bean.page_index + 1
-
         except:
             logging.exception("===处理失败===")
             bean.process = LawyerInfoBean.PROCESS_2  # 处理失败
         finally:
-            CaseLawyerDao.update(bean.lawyer_id, bean.page_index, bean.process)
+            CaseLawyerDao.update(bean.lawyer_id, bean.page_index, bean.process, bean.casenum)
 
     @staticmethod
     def remove_complete_task(deal_task_pool=[]):

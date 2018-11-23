@@ -13,7 +13,7 @@ __all__ = ["task_list_push", "extract_task_list", "task_list_length", "RedisCase
            "set_size", "set_sadd", "RedisCaseDetailMaster", "RedisCasePlanSchemaDetailMaster", "redis_client",
            "RedisCaseDocFormatMaster"]
 conn_pool = redis.ConnectionPool(host='120.76.138.153', port=6379, password="duowenlvshi~6379")
-redis_client = redis.Redis(connection_pool=conn_pool)
+redis_client = redis.StrictRedis(connection_pool=conn_pool)
 from config import TABLE_NAME_SUFFIX, IP_PROXY_CACHE, IP_PROXY_CACHE_TIME, IP_PROXY_INSPECT_URL
 
 
@@ -110,13 +110,10 @@ class RedisCaseDetailMaster(object):
                         create_date,
                         doc_id,
                         state
-                    FROM case_detail{} WHERE state=%s {} limit {} 
-                    '''.format(TABLE_NAME_SUFFIX,
-                               get_system_dict_case_detail_master_where_condition_sql(),
-                               __extract_task_count)
-        logging.info("""init_task_set_push:
-        {}
-        """.format(sql))
+                    FROM case_detail{} WHERE state=%s {} limit {}'''.format(TABLE_NAME_SUFFIX,
+                                                                            get_system_dict_case_detail_master_where_condition_sql(),
+                                                                            __extract_task_count)
+        logging.info("""init_task_set_push: {}""".format(sql))
         row = fetch_all(sql, (CASE_DETAIL_STATE_00,))
         logging.info("RedisCaseDetailMaster init_task_list_push extract OK======")
         count = 0
@@ -178,12 +175,12 @@ class RedisCasePlanSchemaDetailMaster(object):
 
 
 class RedisCaseDocFormatMaster(object):
-    KEY = "case_doc_format" + TABLE_NAME_SUFFIX
+    KEY = "case_doc_format_list" + TABLE_NAME_SUFFIX
     MIN_EXTRACT_BATCH_NUM = 100
-
+    from util.decorator import log_cost_time
     @staticmethod
     def refresh_case_doc_format(key=KEY, batch_num=MIN_EXTRACT_BATCH_NUM):
-        __size = redis_client.scard(key)
+        __size = redis_client.llen(key)
         logging.info("RedisCaseDocFormatMaster " + key + "已经存在任务条数==>：" + str(__size))
         logging.info("RedisCaseDocFormatMaster " + key + "计划缓存任务条数==>：" + str(batch_num))
         __extract_batch_num = batch_num - __size
@@ -199,30 +196,33 @@ class RedisCaseDocFormatMaster(object):
         __extract_batch_num = RedisCaseDocFormatMaster.MIN_EXTRACT_BATCH_NUM if \
             __extract_batch_num < RedisCaseDocFormatMaster.MIN_EXTRACT_BATCH_NUM else __extract_batch_num
         _ret = CaseDocDao.extract_case_doc(batch_num=__extract_batch_num)
+        append_data = []
         for data in _ret:
             _data = str({
                 "doc_id": data["doc_id"],
-                "doc_javascript": data["doc_javascript"],
                 "detail_id": data["detail_id"],
                 "doc_title": data["doc_title"],
                 "doc_judge_date": data["doc_judge_date"],
                 "doc_court": data["doc_court"],
-                "exists": data["exists"],
             })
-            redis_client.sadd(key, _data)
-
-        logging.info("refresh_case_doc_format after size is==>" + str(redis_client.scard(key)))
+            append_data.append(_data)
+        if append_data:
+            redis_client.lpush(key, *append_data)
+        logging.info("refresh_case_doc_format after size is==>" + str(redis_client.llen(key)))
         logging.info("refresh_case_doc_format==OK==")
 
     @staticmethod
+    @log_cost_time("1、获取任务队列")
     def extract_case_doc_format(key=KEY, extract_num=50):
         _ret = []
-        for _ in range(extract_num):
-            data = redis_client.spop(key)
-            if data:
-                _ret.append(ast.literal_eval(data.decode("utf-8")))
-            else:
-                break
+        with redis_client.pipeline() as pipe:
+            for _ in range(extract_num):
+                pipe.lpop(key)
+            data_list = pipe.execute()
+            while data_list:
+                data = data_list.pop()
+                if data:
+                    _ret.append(ast.literal_eval(data.decode("utf-8")))
         return _ret
 
 

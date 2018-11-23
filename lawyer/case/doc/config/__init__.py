@@ -29,13 +29,16 @@ CASE_PLAN_SCHEMA_DETAIL_MASTER_WHERE_CONDITION_SQL = ""
 # ------------------数据库配置---end----------------------------
 # FORMAT_IDX_CONDITION = " and create_date between '2018-10-31 14:11:00' and '2018-10-31 15:00:00'"
 # -----------------
-IP_PROXY_CACHE = 4  # IP代理池设置成5个ip
+IP_PROXY_CACHE = 6  # IP代理池设置成5个ip
+IP_PROXY_FREE_CACHE = 8  #
 IP_PROXY_CACHE_TIME = 2  # 2分钟失效
 IP_PROXY_INSPECT_URL = "http://wenshu.court.gov.cn/"
-IP_PROXY_WAIT_NUM = 5  # ip代理少于成功次数
-PEER_DOC_WEIGHT = 12
-DOC_BATCH_COUNT = IP_PROXY_CACHE * PEER_DOC_WEIGHT
-DOC_RETRY_COUNT = PEER_DOC_WEIGHT * 6
+IP_PROXY_WAIT_NUM = 3  # ip代理少于成功次数
+
+IP_PEER_DOC_WEIGHT = 12
+DOC_BATCH_COUNT = IP_PROXY_CACHE * IP_PEER_DOC_WEIGHT
+DOC_RETRY_COUNT = IP_PEER_DOC_WEIGHT * 4
+
 #################################
 
 ###############################

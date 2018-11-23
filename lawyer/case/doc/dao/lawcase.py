@@ -56,6 +56,14 @@ def update(sql, args):
     return row
 
 
+def batch_execute(sql, args):
+    conn, cursor = connect()
+    row = cursor.executemany(sql, args)
+    conn.commit()
+    connect_close(conn, cursor)
+    return row
+
+
 def refresh_system_dict():
     config.CASE_DETAIL_MASTER_WHERE_CONDITION_TIME = fetch_one("""SELECT data_value from system_dict 
               where data_type='spider' 
@@ -191,8 +199,8 @@ class CaseDetailDao(object):
         CaseDetailDao.task_pool.remove(doc_id)
 
     @staticmethod
-    def update_case_detail_when_case_doc(state, doc_id, remarks=None, master_domain=None, judge_year=None,
-                                         province=None, court_level=None):
+    def update_case_detail_after_case_doc(state, doc_id, remarks=None, master_domain=None, judge_year=None,
+                                          province=None, court_level=None):
         if remarks:
             sql = '''UPDATE  case_detail{} SET state=%s,remarks=%s WHERE doc_id=%s'''.format(
                 TABLE_NAME_SUFFIX)
@@ -307,27 +315,20 @@ class CaseDocDao(object):
                 SELECT 
                     detail_id,
                     doc_id,
-                    doc_javascript,
                     state,
                     doc_title,
                     doc_judge_date,
                     doc_court
-                FROM case_detail{} WHERE state=%s {} limit %s 
+                    FROM case_detail{} WHERE state=%s {} limit %s 
                 '''.format(TABLE_NAME_SUFFIX, config.CASE_DETAIL_FORMAT_MASTER_WHERE_CONDITION_SQL, )
         logging.info("extract_case_doc sql={}".format(sql))
         row = fetch_all(sql, (CASE_DETAIL_STATE_10_NEW, batch_num,))
-        logging.info("extract_case_doc =============")
+        logging.info("extract_case_doc ==ok===")
         if len(row) <= 0:
             SystemDict.system_append_timedelta(data_type="spider",
                                                data_key="CASE_DETAIL_FORMAT_MASTER_WHERE_CONDITION_TIME",
                                                interval=config.CASE_DETAIL_FORMAT_MASTER_WHERE_CONDITION_TIMEDELTA)
         for data in row:
-            if data.get("doc_javascript"):
-                data["exists"] = False
-            else:
-                case_doc = CaseDocDao.select_case_doc(doc_id=data["doc_id"])
-                data["doc_javascript"] = case_doc.get("java_script") if case_doc else ""
-                data["exists"] = True
             update("UPDATE case_detail{} SET state=%s WHERE doc_id=%s".format(TABLE_NAME_SUFFIX),
                    (CASE_DETAIL_STATE_11_NEW, data.get("doc_id")))
         logging.info("extract_case_doc from case_detail{} table ***batch_num={}*** OK=====".
@@ -378,3 +379,85 @@ class CaseDocDao(object):
         data = tuple(__data)
         logging.info("template_sql={}".format(template_sql))
         return update(template_sql, data)
+
+
+class BatchCaseDocDao(CaseDocDao):
+    @staticmethod
+    def batch_insert_case_doc(dto_list):
+        if dto_list:
+            args = []
+            template_sql = '''INSERT INTO `case_doc{}`
+             (`doc_id`,
+              `content`,
+              `html`,
+              `java_script`,
+              `create_time`,
+              `update_time`
+              )  VALUES (%s, %s, %s, %s, now(), now()) on DUPLICATE KEY UPDATE `java_script`=%s,`html`=%s, `update_time`=now()'''.format(
+                TABLE_NAME_SUFFIX)
+            for dto in dto_list:
+                arg = (dto.doc_id, dto.content, dto.html, dto.doc_javascript, dto.doc_javascript, dto.html)
+                args.append(arg)
+            batch_execute(template_sql, args)
+
+
+class BatchCaseDetailDao(CaseDetailDao):
+    @staticmethod
+    def batch_update_case_detail_success_case_doc(dto_list):
+        if dto_list:
+            args = []
+            template_sql = '''UPDATE  case_detail{} SET state=%s,case_type=%s,judge_year=%s,province=%s,court_level=%s WHERE doc_id=%s'''.format(
+                TABLE_NAME_SUFFIX)
+            for dto in dto_list:
+                arg = (dto.state, dto.master_domain, dto.judge_year, dto.province, dto.court_level, dto.doc_id,)
+                args.append(arg)
+            batch_execute(template_sql, args)
+
+    @staticmethod
+    def batch_update_case_detail_fail_case_doc(dto_list):
+        if dto_list:
+            args = []
+            template_sql = '''UPDATE  case_detail{} SET state=%s,remarks=%s WHERE doc_id=%s'''.format(
+                TABLE_NAME_SUFFIX)
+            for dto in dto_list:
+                arg = (dto.state, dto.msg, dto.doc_id)
+                args.append(arg)
+            batch_execute(template_sql, args)
+
+
+class BatchComplexDao(object):
+
+    @staticmethod
+    def extract_doc_javascript(doc_id_list: list) -> dict:
+        ret_dict = {}
+        if doc_id_list:
+            __sql = ""
+            prefix = ""
+            for doc_id in doc_id_list:
+                __sql += prefix + "'{}'".format(doc_id)
+                prefix = ","
+            template_sql = "SELECT doc_id,java_script FROM case_doc{} WHERE doc_id in ({})".format(TABLE_NAME_SUFFIX,
+                                                                                                   __sql)
+            logging.info(template_sql)
+            ret = fetch_all(template_sql, ())
+            for data in ret:  # doc_id没有数据很少
+                java_script = data["java_script"]
+                doc_id = data["doc_id"]
+                ret_dict[doc_id] = java_script
+                if not java_script:
+                    template_sql = "SELECT doc_javascript FROM case_detail{} WHERE doc_id = %s".format(
+                        TABLE_NAME_SUFFIX)
+                    __data = fetch_one(template_sql, (doc_id))
+                    if __data:
+                        ret_dict[doc_id] = __data["doc_javascript"]
+            return ret_dict
+
+    @staticmethod
+    def query_system_dict(data_type, data_key):
+        template_sql = "SELECT data_type,data_key,data_value,remark,state FROM system_dict where data_type=%s and data_key=%s"
+        ret = fetch_one(template_sql, (data_type, data_key))
+        return ret
+
+# TABLE_NAME_SUFFIX = ""
+# test = ["0001a737-d005-4c88-b338-a90b0171f8ce", "22222222"]
+# print(BatchComplexDao.extract_doc_javascript(test))

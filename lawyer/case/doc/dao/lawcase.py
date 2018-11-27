@@ -424,6 +424,34 @@ class BatchCaseDetailDao(CaseDetailDao):
                 args.append(arg)
             batch_execute(template_sql, args)
 
+    @staticmethod
+    def batch_insert_case_detail(sucess_list: list):
+        if sucess_list:
+            args = []
+            template_sql = """
+                INSERT INTO case_detail{}(
+                            detail_id,
+                            remarks,
+                            doc_id,
+                            schema_day,
+                            rule_id,
+                            state,
+                            doc_level,
+                            doc_num,
+                            doc_reason,
+                            doc_type,
+                            doc_judge_date,
+                            doc_title,
+                            doc_court
+                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON DUPLICATE KEY UPDATE `update_date`=now()
+                """.format(TABLE_NAME_SUFFIX)
+            for dto in sucess_list:
+                arg = (
+                    dto.detail_id, "批量处理", dto.doc_id, dto.schema_day, dto.rule_id, '00', dto.doc_level, dto.doc_num,
+                    dto.doc_reason, dto.doc_type, dto.doc_judge_date, dto.doc_title, dto.doc_court)
+                args.append(arg)
+            batch_execute(template_sql, args)
+
 
 class BatchComplexDao(object):
 

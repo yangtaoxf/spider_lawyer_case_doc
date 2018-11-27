@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(
 __all__ = ['log_cost_time', ]
 
 
-def log_cost_time(describe=""):
+def log_cost_time(describe="", ):
     """
     统计方法耗时
     :param describe: 任务描述
@@ -22,8 +22,10 @@ def log_cost_time(describe=""):
             starttime = datetime.datetime.now()
             ret = func(*args, **kwargs)
             endtime = datetime.datetime.now()
-            cost_time_str = str((endtime - starttime).seconds)
-            logging.info("---*--- [{}] [{}] 总耗时:{}s ===*===".format(describe, func, cost_time_str, ))
+            seconds_str = str((endtime - starttime).seconds)
+            microseconds_str = str((endtime - starttime).microseconds)
+            logging.info(
+                "---*--- [{}] [{}] 总耗时:[{} s] [{} μs] ===*===".format(describe, func, seconds_str, microseconds_str))
             return ret
 
         return inner_wapper

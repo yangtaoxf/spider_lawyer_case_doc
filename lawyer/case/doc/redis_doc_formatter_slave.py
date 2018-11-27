@@ -1,12 +1,11 @@
 # coding=utf8
 import logging
 import time
-import datetime
-from util.decorator import log_cost_time
-from util.redis_util import RedisCaseDocFormatMaster
-from doc_formatter import DocContextJsParser
 
 from dao.lawcase import CASE_DETAIL_STATE_20, CASE_DETAIL_STATE_19, BatchCaseDocDao, BatchCaseDetailDao, BatchComplexDao
+from doc_formatter import DocContextJsParser
+from util.decorator import log_cost_time
+from util.redis_util import RedisCaseDocFormatMaster
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
                     datefmt='%a, %d %b %Y %H:%M:%S', filemode='a', )
@@ -121,7 +120,7 @@ PAUSE_STATE = ""  # 默认
 
 
 def manager_pause():
-    minute = datetime.datetime.now().minute
+    # minute = datetime.datetime.now().minute
     global PAUSE_STATE
     if not PAUSE_STATE:
         logging.info("===开始获取最新PAUSE_STATE的状态====")

@@ -74,30 +74,34 @@ class DocContextJsParser(object):
         转移html文档
         """
         __ret = Result()
-        __data_list = re.findall(r'JSON\.stringify\(([\s\S]*?)\);', java_script)
-        if not __data_list:
-            logging.warning("java_script没有找到JSON= {} ".format(java_script))
-            __ret.fail(msg="没有找到JSON stringify")
-            return __ret
-        data = json.loads(__data_list.pop())
-        __html_list = re.findall(r'\\"Html\\":\\"(.*?)\\"}";', java_script)
-        if not __html_list:
-            logging.warning("java_script没有Html标签= {}".format(java_script))
-            __ret.fail(msg="没有找到JSON stringify")
-            return __ret
-        __html = __html_list.pop()
-        __html = __html.replace("01lydyh01", "\'")
-        for old, new in _css_change_map.items():
-            __html = __html.replace(old, new)
-        __html = _templete_divcontent.format(__html)
-        soup = BeautifulSoup(__html, features="html.parser")
-        __text = soup.getText(separator="\n")
-        __doc_title = doc_title if doc_title else data.get("案件名称")
-        __court_province = data.get("法院省份")
-        __master_domain = DocContextJsParser.match_master_skill_domain(doc_title=__doc_title)
-        __ret.success(data, __html, __text, __master_domain, __court_province)
-        DocContextJsParser.calculate_court_level(court_name=doc_court, data=data, ret=__ret)
-        DocContextJsParser.calculate_judge_year(doc_judge_date=doc_judge_date, ret=__ret)
+        try:
+            __data_list = re.findall(r'JSON\.stringify\(([\s\S]*?)\);', java_script)
+            if not __data_list:
+                logging.warning("java_script没有找到JSON= {} ".format(java_script))
+                __ret.fail(msg="没有找到JSON stringify")
+                return __ret
+            data = json.loads(__data_list.pop())
+            __html_list = re.findall(r'\\"Html\\":\\"(.*?)\\"}";', java_script)
+            if not __html_list:
+                logging.warning("java_script没有Html标签= {}".format(java_script))
+                __ret.fail(msg="没有找到JSON stringify")
+                return __ret
+            __html = __html_list.pop()
+            __html = __html.replace("01lydyh01", "\'")
+            for old, new in _css_change_map.items():
+                __html = __html.replace(old, new)
+            __html = _templete_divcontent.format(__html)
+            soup = BeautifulSoup(__html, features="html.parser")
+            __text = soup.getText(separator="\n")
+            __doc_title = doc_title if doc_title else data.get("案件名称")
+            __court_province = data.get("法院省份")
+            __master_domain = DocContextJsParser.match_master_skill_domain(doc_title=__doc_title)
+            __ret.success(data, __html, __text, __master_domain, __court_province)
+            DocContextJsParser.calculate_court_level(court_name=doc_court, data=data, ret=__ret)
+            DocContextJsParser.calculate_judge_year(doc_judge_date=doc_judge_date, ret=__ret)
+        except Exception:
+            logging.error("=*= 发生了错误")
+            __ret.fail("发生了解析错误")
         return __ret
 
     @staticmethod

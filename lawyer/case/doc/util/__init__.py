@@ -5,6 +5,7 @@ import re
 import time
 import os
 import execjs
+from util.decorator import log_cost_time
 
 current_Path = os.path.abspath(os.path.dirname(__file__))
 root_path = os.path.split(current_Path)[0]
@@ -33,6 +34,7 @@ _value = "FcOMw4kRA0EIw4DDgMKUOAd4csOmH8KSw5dfVcK1wpI0UMOFw4/CsQktZVMgUcKCCkBWV0
 _context = execjs.compile(doc_id_js)
 
 
+@log_cost_time(describe="解密文档")
 def decrypt_id(run_eval, _id):
     """
     解密doc_id

@@ -12,6 +12,7 @@ from lawcase.bean import LawyerInfoBean
 from lawcase.dao import CaseLawyerContextDao, CaseLawyerDao
 import json
 from lawcase.js import wen_shu_js
+from util.decorator import log_cost_time
 
 # 代理池
 proxy_pool = ProxyPool()
@@ -26,6 +27,7 @@ class CasePlanSchema(object):
     __max_data_num = MAX_PAGE_DATA_NUM  # 最大条数
 
     @staticmethod
+    @log_cost_time(describe="下载目录内容")
     async def proceed_schema(bean):
         """
         下载任务

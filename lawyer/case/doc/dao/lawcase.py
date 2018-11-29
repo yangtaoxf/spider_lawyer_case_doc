@@ -169,7 +169,7 @@ class CaseDetailDao(object):
 
     @staticmethod
     def init(count, task_pool):
-        # from util.redis_util import extract_task_list
+        # from common_util.redis_util import extract_task_list
         _count = count
         __history_length = len(task_pool) if task_pool else 0
         # CaseDetailDao.init_task_list_push()

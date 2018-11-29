@@ -5,6 +5,7 @@
       <sourceFolder url="file://$MODULE_DIR$/lawyer/case/doc" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/lawyer/case/context" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/lawyer/case/common" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lawyer/case/case_plan_schema" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/lawyer/case/common/dysms_python" />
       <excludeFolder url="file://$MODULE_DIR$/venv" />
     </content>

@@ -31,10 +31,7 @@ if __name__ == '__main__':
             time.sleep(60)
             continue
         logging.info("=*= batch proceed begain =*=")
-        pool = Pool(1)
         for data in bean_list:
             bean = RedisCaseLawyerContextMasterHelper.wrapper(data=data)
-            pool.apply_async(LawCaseContextProcessor.proceed, args=(bean,))
-        pool.close()
-        pool.join()
+            LawCaseContextProcessor.proceed(context_bean=bean)
         logging.info("=*= batch proceed end =*=")

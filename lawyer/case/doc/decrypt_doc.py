@@ -7,7 +7,7 @@ from pymysql.err import IntegrityError
 
 import law_case_db as task_db
 from dao.lawcase import BatchCaseDetailDao
-from util import decrypt_id
+from util import decrypt_id, decrypt_id_array
 from util.decorator import log_cost_time
 
 logging.basicConfig(level=logging.DEBUG,
@@ -46,12 +46,14 @@ class ProcessorItemResult(object):
         self.doc_reason = None
         self.schema_day = None
         self.rule_id = None
+        self.encrypt_doc_id = None
         self.detail_id = detail_id
         self.code = self.CODE_03
 
     @staticmethod
     def build(doc_type=None, doc_judge_date=None, doc_title=None, schema_day=None, detail_id=None, rule_id=None,
-              doc_id=None, doc_level=None, doc_num=None, doc_court=None, doc_reason=None, code=None):
+              doc_id=None, doc_level=None, doc_num=None, doc_court=None, doc_reason=None, code=None,
+              encrypt_doc_id=None):
         ret = ProcessorItemResult(detail_id=detail_id)
         ret.doc_type = doc_type
         ret.doc_judge_date = doc_judge_date
@@ -64,6 +66,7 @@ class ProcessorItemResult(object):
         ret.code = code
         ret.schema_day = schema_day
         ret.rule_id = rule_id
+        ret.encrypt_doc_id = encrypt_doc_id
         return ret
 
     def success(self):
@@ -123,10 +126,10 @@ class CaseDetailProcessor(object):
         schema_day = case_plan_schema_detail_dict["schema_day"]
         rule_id = case_plan_schema_detail_dict["rule_id"]
         json_text = case_plan_schema_detail_dict["json_text"]
-        deal_state = task_db.CASE_PLAN_SCHEMA_DETAIL_09
         logging.info("detail_id=" + detail_id + ";schema_day=" + schema_day)
         batch_result = ProcessorBatchResult(detail_id=detail_id)
         success_list = []
+        encrypt_doc_id_list = []  # key:解密前id
         try:
             if "RunEval" in json_text:
                 if '"[{\\' in json_text:
@@ -144,18 +147,18 @@ class CaseDetailProcessor(object):
                         doc_type = it.get("案件类型")
                         doc_judge_date = it.get("裁判日期")
                         doc_title = it.get("案件名称")
-                        _json_data_id = decrypt_id(run_eval, it.get("文书ID"))
-                        logging.info(_json_data_id)
-                        doc_id = _json_data_id
+                        encrypt_doc_id = it.get("文书ID")
+
+                        # _json_data_id = decrypt_id(run_eval, it.get("文书ID"))
                         doc_level = it.get("审判程序")
                         doc_num = it.get("案号")
                         doc_court = it.get("法院名称")
                         doc_reason = it.get("不公开理由")
+                        encrypt_doc_id_list.append(it.get("文书ID"))
                         success = ProcessorItemResult.build(
                             doc_type=doc_type,
                             doc_judge_date=doc_judge_date,
                             doc_title=doc_title,
-                            doc_id=doc_id,
                             doc_level=doc_level,
                             doc_num=doc_num,
                             doc_court=doc_court,
@@ -164,6 +167,7 @@ class CaseDetailProcessor(object):
                             detail_id=detail_id,
                             schema_day=schema_day,
                             rule_id=rule_id,
+                            encrypt_doc_id=encrypt_doc_id
                         )
                         success_list.append(success)
                     except IntegrityError:
@@ -171,7 +175,11 @@ class CaseDetailProcessor(object):
                     except Exception:
                         batch_result.set_code(ProcessorBatchResult.CODE_09)
                         logging.exception("发生了错误")
-
+                # 批量解密文档id
+                doc_id_dict = decrypt_id_array(run_eval, encrypt_doc_id_list)
+                for __sucess in success_list:
+                    __sucess.doc_id = doc_id_dict.get(__sucess.encrypt_doc_id)
+                logging.info(success_list)
                 if not batch_result.fail():  # 没有失败,更新为批次成功
                     batch_result.set_code(ProcessorBatchResult.CODE_10)
         except Exception:
@@ -218,4 +226,3 @@ if __name__ == "__main__":
         except Exception as e:
             logging.exception("发生了错误")
             time.sleep(60)
-        time.sleep(60)

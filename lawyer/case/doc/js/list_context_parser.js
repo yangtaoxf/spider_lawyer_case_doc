@@ -1543,3 +1543,16 @@ function DecryptDocID(key, id) {
     var realid = com.str.Decrypt(unzipid);
     return realid;
 }
+
+function DecryptDocIDArray(key, ids) {
+    if (key) {
+        UpdateKey(key);
+    }
+    ret_array = new Array()
+    for (j = 0, len = ids.length; j < len; j++) {
+        var unzipid = unzip(ids[j]);
+        var realid = com.str.Decrypt(unzipid);
+        ret_array.push(realid)
+    }
+    return ret_array;
+}

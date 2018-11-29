@@ -7,6 +7,8 @@
           <resourceRoots>
             <path value="file://$PROJECT_DIR$/lawyer/case" />
             <path value="file://$PROJECT_DIR$/lawyer/case/doc" />
+            <path value="file://$PROJECT_DIR$/lawyer/case/case_plan_schema" />
+            <path value="file://$PROJECT_DIR$/lawyer/case/common" />
           </resourceRoots>
         </entryData>
       </entry>

@@ -1,0 +1,1 @@
+TABLE_NAME_SUFFIX = ""  #

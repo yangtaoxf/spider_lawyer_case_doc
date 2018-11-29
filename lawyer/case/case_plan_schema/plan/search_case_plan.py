@@ -81,6 +81,7 @@ class SearchConditionBeanManager(object):
     _priority = {"裁判年份": False, "裁判日期": True}
     _seperate = ","  # 分割字符
     _deault_node_case_num = -1
+    _max_case_count = 200
 
     def __init__(self, beans: list):
         self.child_node = []  # 是否有子节点
@@ -93,6 +94,16 @@ class SearchConditionBeanManager(object):
         :return:
         """
         return self.node_case_num != self._deault_node_case_num
+
+    def is_complete(self):  # TODO:
+        """
+        是否完成了分割
+        :return:
+        """
+        complete = False
+        if self.node_case_num == self._deault_node_case_num:
+            pass
+        return complete
 
     def str(self):
         '''
@@ -255,9 +266,9 @@ def extract_content(param, proxies={}, retry=6):
             logging.info(json_text)
             return json_text
         except Exception:
-            logging.exception("=*= 错误发生 =*=")
+            logging.exception("=*= 错误发生还剩 {} 次 =*=".format(str(retry)))
             time.sleep(1)
-            --retry
+            retry = retry - 1
 
 
 def partition_context(manager: SearchConditionBeanManager):
@@ -555,10 +566,7 @@ def partition_load_node_case_num(manager: SearchConditionBeanManager):
 file_pipeline = FilePipeline("C:/Users/Administrator/PycharmProjects/{}".format("test.text"))
 _test = SearchConditionBeanManager.build("上传日期:2018-11-12 TO 2018-11-12,基层法院:南京市鼓楼区人民法院")
 manager = partition_context(_test)  # 裁判年份
-file_pipeline.save(manager)
 manager = proceed_partition_context(manager)  # 裁判日期
-print(manager)
-file_pipeline.save(manager)
 manager = partition_load_node_case_num(manager)
 file_pipeline.save(manager)
 print(manager)

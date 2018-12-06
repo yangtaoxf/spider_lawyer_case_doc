@@ -20,6 +20,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(
                     datefmt='%a, %d %b %Y %H:%M:%S', filemode='a', )
 if __name__ == "__main__":
     while True:
-        redis_sync_case_lawyer_doc_master(batch_num=50)
+        redis_sync_case_lawyer_doc_master(batch_num=100)
         logging.info("=*= 休眠5秒 =*=")
         time.sleep(5)

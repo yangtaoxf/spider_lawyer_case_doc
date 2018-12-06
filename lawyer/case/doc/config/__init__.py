@@ -12,7 +12,7 @@ CaseDetailDao_index = 5
 case_plan_schema_detail_index = 5
 
 #################################
-TABLE_NAME_SUFFIX = "_2018_01"  # 分表后缀
+TABLE_NAME_SUFFIX = "_2015_01"  # 分表后缀
 WHERE_IDX_CONDITION = " and create_date <= '2018-10-30 00:00:00'"
 # ------------------数据库配置--begain----------------------------
 CASE_DETAIL_MASTER_WHERE_CONDITION_TIME = ""

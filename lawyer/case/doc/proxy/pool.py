@@ -15,6 +15,10 @@ import requests
 current_Path = os.path.abspath(os.path.dirname(__file__))
 root_path = os.path.split(current_Path)[0]
 sys.path.append(root_path)
+
+import config
+
+print(config.__path__)
 from config import DOC_RETRY_COUNT, IP_PROXY_CACHE
 
 

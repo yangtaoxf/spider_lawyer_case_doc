@@ -18,7 +18,7 @@ def get_random_header() -> str:
     return random_header
 
 
-def post_get_vjkl5_url(guid, url="http://wenshu.court.gov.cn/list/list/?sorttype=1", _proxies={}):
+def post_get_vjkl5_url(guid, url="http://wenshu.court.gov.cn/list/list/?sorttype=1&number=&guid=", _proxies={}):
     """
     获取vjkl5值
     :param guid:
@@ -36,11 +36,11 @@ def post_get_vjkl5_url(guid, url="http://wenshu.court.gov.cn/list/list/?sorttype
         'Upgrade-Insecure-Requests': '1',
         'User-Agent': get_random_header(),
     }
-    payload = {"guid": "",
+    payload = {"guid": guid,
                "sorttype": 1,
                "number": "",
-               "conditions": 'searchWord 2 AJLX  案件类型:民事案件',
                }  # 先写死
+    logging.info(_proxies)
     res = requests.post(
         url=url,
         headers=headers,

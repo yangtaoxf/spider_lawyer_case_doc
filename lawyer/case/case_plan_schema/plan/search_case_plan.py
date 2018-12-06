@@ -11,7 +11,6 @@ __root_path_2 = __root_path + "doc" + os.sep
 print(__root_path_1, "========", __root_path_2)
 sys.path.append(__root_path_1)
 sys.path.append(__root_path_2)
-
 # ------------------
 import logging
 from util.decorator import log_cost_time
@@ -19,6 +18,7 @@ import calendar
 import datetime
 import time
 import math
+from proxy.pool import ProxyPool
 from plan.pipeline import FilePipeline
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
@@ -33,7 +33,10 @@ from lawcase.js import wen_shu_js
 
 import util.post_util as post_util
 from util.post_util import get_random_header
-from plan.config import TABLE_NAME_SUFFIX
+from plan.plan_config import TABLE_NAME_SUFFIX
+
+pool = ProxyPool()
+pool.change_ip_proxy_cache(1)
 
 
 class SearchConditionBean(object):
@@ -102,7 +105,15 @@ class SearchConditionBeanManager(object):
         """
         complete = False
         if self.node_case_num == self._deault_node_case_num:
-            pass
+            return complete
+        if self.child_node:
+            for data in self.child_node:
+                assert isinstance(data, SearchConditionBeanManager)
+                if not data.is_complete():
+                    return complete
+        elif self.node_case_num > 200:  # 继续细分
+            return complete
+        complete = True
         return complete
 
     def str(self):
@@ -169,10 +180,9 @@ class SearchConditionBeanManager(object):
     def __str__(self):
         templete = ""
         if len(self.child_node) == 0:
-            templete = """node_case_num={} beans_str={} child_node={}\n"""
+            templete = """node_case_num={} beans_str={} child_node={}"""
         else:
-            templete = """node_case_num={} beans_str={} child_node=
-    {}
+            templete = """node_case_num={} beans_str={} child_node={}
 """
         return templete.format(str(self.node_case_num), self.str(),
                                str(self.child_node))
@@ -228,16 +238,18 @@ def init_case_plan_schema():
     return False
 
 
-def extract_content(param, proxies={}, retry=6):
+def extract_content(param, retry=60):
     """
     获取文档目录
     :return:
     """
     while retry > 0:
         try:
+            pool.validate_init_ip_proxy()
+            ip_proxy_item = pool.extract_cache_ip_proxy_item()
             guid = execjs.compile(wen_shu_js).call('guid')
-            referer = "http://wenshu.court.gov.cn/list/list/?sorttype=1"
-            vjkl5 = post_util.post_get_vjkl5_url(guid, url=referer)
+            referer = "http://wenshu.court.gov.cn/list/list/?sorttype=1&number=&guid="
+            vjkl5 = post_util.post_get_vjkl5_url(guid, url=referer, _proxies=ip_proxy_item.proxies)
             vl5x = execjs.compile(wen_shu_js).call('getkey', vjkl5)
             number = 'wens'
             payload = {'Param': param,
@@ -259,14 +271,24 @@ def extract_content(param, proxies={}, retry=6):
             logging.info(payload)
             logging.info(headers)
             ret = requests.post(url='http://wenshu.court.gov.cn/List/TreeContent', data=payload, headers=headers,
-                                proxies=proxies,
+                                proxies=ip_proxy_item.proxies,
                                 timeout=30)
+            assert ret.status_code == 200
+            assert ret.json()
             json_text = ret.json()
             ret.close()
             logging.info(json_text)
+            ip_proxy_item.success()
             return json_text
+        except requests.exceptions.ProxyError:
+            ip_proxy_item.fail(multiple=5)
+            logging.exception("=*= 错误发生还剩 {} 次 =*=".format(str(retry)))
+        except execjs._exceptions.ProgramError:
+            ip_proxy_item.fail(multiple=2)
+            logging.exception("=*= 错误发生还剩 {} 次 =*=".format(str(retry)))
         except Exception:
             logging.exception("=*= 错误发生还剩 {} 次 =*=".format(str(retry)))
+            ip_proxy_item.fail()
             time.sleep(1)
             retry = retry - 1
 
@@ -278,17 +300,17 @@ def partition_context(manager: SearchConditionBeanManager):
     :return:
     """
     # manager = SearchConditionBeanManager.build(param)
+    if manager.child_node:  # 如果有子节点,不加载
+        return manager
     param = manager.str()
     json_text = extract_content(param)
-    __priority = manager.priority()
     json_data = json.loads(json_text)
-    if not __priority:
-        __priority = "裁判年份"
     for it in json_data:
-        if it.get("Key") == __priority:  #
+        if it.get("Key") == "裁判年份":  #
             child = it.get("Child")
             int_value = it.get("Value")
-            manager.node_case_num = int_value
+            manager.node_case_num = int(int_value)
+            print("==============")
             print(manager)
             for _child_it in child:
                 _child_key = _child_it.get("Key")
@@ -500,14 +522,15 @@ def __proceed_partition_context(manager: SearchConditionBeanManager):
     """
     assert len(manager.child_node) == 0
     __priority = manager.priority()
+    if not __priority:
+        __priority = "裁判日期"
     match = False
     for data in manager.beans:
-        if __priority in data.name:
-            if manager.priority_proceed():
-                start_time = data.value[0]
-                end_time = data.value[1]
-                match = True
-                continue
+        if "裁判日期" in data.name:
+            start_time = data.value[0]
+            end_time = data.value[1]
+            match = True
+            continue
     # 裁判年份:2014
     if not match:
         value = manager.query_bean_value_by("裁判年份")
@@ -522,6 +545,7 @@ def __proceed_partition_context(manager: SearchConditionBeanManager):
     __pear_case = math.ceil(manager.node_case_num / 200)
     print(__pear_case)
     print(__days)
+    print(__priority)
     __partition = __days // __pear_case - 1
     print(__partition)
     if __partition < 0:
@@ -535,8 +559,8 @@ def __proceed_partition_context(manager: SearchConditionBeanManager):
         _step = _step + datetime.timedelta(days=__partition)  # 偏移结束时间
         if _step > end:
             _step = end
-        bean = SearchConditionBean(name=manager.priority(), value=[_before_step.strftime("%Y-%m-%d"),
-                                                                   _step.strftime("%Y-%m-%d")])
+        bean = SearchConditionBean(name=__priority, value=[_before_step.strftime("%Y-%m-%d"),
+                                                           _step.strftime("%Y-%m-%d")])
         _step = _step + datetime.timedelta(days=1)  # 下一次开始时间
         time_partition_list.append(bean)
     for time_partition in time_partition_list:
@@ -564,10 +588,17 @@ def partition_load_node_case_num(manager: SearchConditionBeanManager):
 # _test.node_case_num = 2857
 # proceed_partition_context(_test)
 file_pipeline = FilePipeline("C:/Users/Administrator/PycharmProjects/{}".format("test.text"))
-_test = SearchConditionBeanManager.build("上传日期:2018-11-12 TO 2018-11-12,基层法院:南京市鼓楼区人民法院")
-manager = partition_context(_test)  # 裁判年份
-manager = proceed_partition_context(manager)  # 裁判日期
-manager = partition_load_node_case_num(manager)
+manager = SearchConditionBeanManager.build(
+    "上传日期:2018-11-12 TO 2018-11-12,基层法院:南京市鼓楼区人民法院")
+while not manager.is_complete():
+    manager = partition_context(manager)  # 裁判年份
+    file_pipeline.save(manager)
+    manager = proceed_partition_context(manager)  # 裁判日期
+    file_pipeline.save(manager)
+    manager = partition_load_node_case_num(manager)  # 加载未有的案例
+    file_pipeline.save(manager)
+print(manager.is_complete())
 file_pipeline.save(manager)
-print(manager)
+
+# print(manager)
 # json_text = partition_context("上传日期:2018-11-12 TO 2018-11-12,基层法院:南京市鼓楼区人民法院,裁判年份:2014")

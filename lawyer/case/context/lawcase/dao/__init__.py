@@ -196,9 +196,35 @@ class CaseLawyerDocDao(object):
 
     @staticmethod
     def formatter_extract(batch_num):
-        TIME_FORMAT = '%Y-%m-%d %H:%i:%S'
+        # TIME_FORMAT = '%Y-%m-%d %H:%i:%S'
+        # sql = '''
+        #        SELECT
+        #            `doc_id`,
+        #            `spider_id`,
+        #            `lawyer_id`,
+        #            `sync_status`,
+        #            `java_script`,
+        #            `json_data_name`,
+        #            `json_data_date`,
+        #            `json_data_court`
+        #        FROM case_lawyer_doc{} WHERE sync_status='{}' and  createdate between
+        #         (SELECT DATE_FORMAT(dataValue, %s) FROM data_dict WHERE type='spider' and dataKey='local_doc_formatter_master') and
+        #         (SELECT date_add(DATE_FORMAT(dataValue, %s), interval 60 minute) FROM data_dict WHERE type = 'spider' and dataKey = 'local_doc_formatter_master')
+        #        limit {}
+        #        '''.format(TABLE_NAME_SUFFIX, CaseLawyerDocBean.SYNC_STATUS_10, batch_num)
+        # logging.info("[CaseLawyerContextDao formatter_extract sql] = {}".format(sql))
+        # row = fetch_all(sql, (TIME_FORMAT, TIME_FORMAT))
+        # for data in row:
+        #     CaseLawyerDocDao.update_sync_status(state=CaseLawyerDocBean.SYNC_STATUS_11, doc_id=data.get("doc_id"))
+        #     data["sync_status"] = CaseLawyerDocBean.SYNC_STATUS_11  # 更新队列状态
+        # if len(row) <= 0:  # 没有数据增加时间
+        #     update("""UPDATE data_dict
+        #                     SET dataValue=date_add(DATE_FORMAT(dataValue,%s),interval 60 minute)
+        #                 WHERE type='spider' and dataKey='local_doc_formatter_master' """,
+        #            (TIME_FORMAT)
+        #            )
         sql = '''
-               SELECT 
+               SELECT
                    `doc_id`,
                    `spider_id`,
                    `lawyer_id`,
@@ -206,23 +232,14 @@ class CaseLawyerDocDao(object):
                    `java_script`,
                    `json_data_name`,
                    `json_data_date`,
-                   `json_data_court` 
-               FROM case_lawyer_doc{} WHERE sync_status='{}' and  createdate between 
-                (SELECT DATE_FORMAT(dataValue, %s) FROM data_dict WHERE type='spider' and dataKey='local_doc_formatter_master') and 
-                (SELECT date_add(DATE_FORMAT(dataValue, %s), interval 60 minute) FROM data_dict WHERE type = 'spider' and dataKey = 'local_doc_formatter_master')
-               limit {}
+                   `json_data_court`
+               FROM case_lawyer_doc{} WHERE sync_status='{}' limit {}
                '''.format(TABLE_NAME_SUFFIX, CaseLawyerDocBean.SYNC_STATUS_10, batch_num)
         logging.info("[CaseLawyerContextDao formatter_extract sql] = {}".format(sql))
-        row = fetch_all(sql, (TIME_FORMAT, TIME_FORMAT))
+        row = fetch_all(sql, ())
         for data in row:
             CaseLawyerDocDao.update_sync_status(state=CaseLawyerDocBean.SYNC_STATUS_11, doc_id=data.get("doc_id"))
             data["sync_status"] = CaseLawyerDocBean.SYNC_STATUS_11  # 更新队列状态
-        if len(row) <= 0:  # 没有数据增加时间
-            update("""UPDATE data_dict 
-                            SET dataValue=date_add(DATE_FORMAT(dataValue,%s),interval 60 minute) 
-                        WHERE type='spider' and dataKey='local_doc_formatter_master' """,
-                   (TIME_FORMAT)
-                   )
         return row
 
     @staticmethod
@@ -268,6 +285,23 @@ class CaseLawyerDocDao(object):
         if query_end_time and query_end_time:
             query_start_time = query_start_time.get("query_start_time")
             query_end_time = query_end_time.get("query_end_time")
+        # sql = '''
+        #        SELECT
+        #            `doc_id`,
+        #            `lawyer_id`,
+        #            `json_data_type`,
+        #            `json_data_date`,
+        #            `json_data_name`,
+        #            `json_data_level`,
+        #            `json_data_number`,
+        #            `json_data_court`,
+        #            `html`,
+        #            `sync_status`,
+        #            `master_domain`,
+        #            `spider_id`
+        #        FROM case_lawyer_doc{} WHERE sync_status='{}' and createdate between '{}' and '{}' limit {}
+        #        '''.format(TABLE_NAME_SUFFIX, CaseLawyerDocBean.SYNC_STATUS_20, query_start_time, query_end_time,
+        #                   batch_num)
         sql = '''
                SELECT 
                    `doc_id`,
@@ -282,9 +316,8 @@ class CaseLawyerDocDao(object):
                    `sync_status`,
                    `master_domain`,
                    `spider_id` 
-               FROM case_lawyer_doc{} WHERE sync_status='{}' and createdate between '{}' and '{}' limit {}
-               '''.format(TABLE_NAME_SUFFIX, CaseLawyerDocBean.SYNC_STATUS_20, query_start_time, query_end_time,
-                          batch_num)
+               FROM case_lawyer_doc{} WHERE sync_status='{}'  limit {}
+               '''.format(TABLE_NAME_SUFFIX, CaseLawyerDocBean.SYNC_STATUS_20, batch_num)
         logging.info("[CaseLawyerContextDao sync_doc_extract sql] = {}".format(sql))
         row = fetch_all(sql, ())
         for data in row:
@@ -295,10 +328,10 @@ class CaseLawyerDocDao(object):
                 (CaseLawyerDocBean.SYNC_STATUS_21, doc_id, lawyer_id,)
             )
             data["sync_status"] = CaseLawyerDocBean.SYNC_STATUS_21  # 更新队列状态
-        if len(row) <= 0:  # 没有数据增加时间
-            update("""UPDATE data_dict 
-                        SET dataValue=date_add(DATE_FORMAT(dataValue,%s),interval 60 minute) 
-                      WHERE type='spider' and dataKey='sync_case_lawyer_doc_master' """, (TIME_FORMAT))
+        # if len(row) <= 0:  # 没有数据增加时间
+        #     update("""UPDATE data_dict
+        #                 SET dataValue=date_add(DATE_FORMAT(dataValue,%s),interval 60 minute)
+        #               WHERE type='spider' and dataKey='sync_case_lawyer_doc_master' """, (TIME_FORMAT))
         return row
 
     @staticmethod

@@ -5,5 +5,6 @@ class FilePipeline(object):
         self.file_name = file_name
 
     def save(self, text):
+        print(text)
         with open(self.file_name, 'w') as f:
             f.write(str(text))

@@ -5,7 +5,8 @@ import logging
 from xlwt import *
 import datetime
 from statistics.config import AreaTool, ProvinceTool, ADS_FIELD, CERT_CONSTANT
-from statistics.dao import LawyerDao
+
+# from statistics.dao import LawyerDao
 
 YEAR = datetime.datetime.now().year  # 当前年
 MONTH = datetime.datetime.now().month  # 当前月
@@ -142,6 +143,10 @@ class TitleRow(object):
         self.title_dict = {}
         self.sheet = sheet
         index = 0
+        pattern = Pattern()
+        pattern.pattern = Pattern.SOLID_PATTERN
+        pattern.pattern_fore_colour = Style.colour_map['yellow']  # 设置单元格背景色为黄色
+        style.pattern = pattern
         for key, value in kwargs.items():
             start_index = index
             if isinstance(value, list) and value:
@@ -153,6 +158,7 @@ class TitleRow(object):
             else:
                 sheet.write_merge(0, 1, start_index, index, key, style=style)
                 index += 1
+        style.pattern = Pattern()  # 还原回去
 
     def write(self, bean: LawyerBean):
         self.ROW += 1
@@ -184,29 +190,29 @@ class TitleRow(object):
                 _index += 1
 
 
-_data = LawyerDao.query_by_lawyer_id("4a423e0c02b9e7aa5acf2b4d06427ac1")
-# lawyer = LawyerBean(**{'id': '4a423e0c02b9e7aa5acf2b4d06427ac1', 'address': '广州市天河路101号兴业银行大厦十三楼',
-#                        'briefInfo': '国信信扬律师事务所的合伙人。\n专职律师，擅长劳动法、公司法等领域的法律事务。\n同时担任广州市律师协会劳动和社会保障法律专业委员会委员、广东省律师协会劳动和社会保障法律专业委员会委员。先后担任广东省飞来峡水利枢纽管理局、广州市国土资源和房屋管理局越秀分局、广州市越秀区旧城改造项目办公室、广州市越秀区房屋租赁管理所、马士基信息处理(广东)有限公司、卓域集团有限公司、金源矿业有限公司等多个政府单位及大型企业的常年法律顾问。',
-#                        'caseNum': 101, 'license': '/certificate/2016/1/3/13c190a132414708b4f76547ad33917e.jpg',
-#                        'certificateDate': datetime.datetime(2006, 6, 1, 0, 0), 'city_id': 1292,
-#                        'create_date': datetime.datetime(2014, 12, 15, 0, 17, 12), 'deviceType': 'android',
-#                        'email': '17960413@qq.com', 'login_name': '13076828028',
-#                        'logo': '/logo/lawyer/2016/1/12/4a423e0c02b9e7aa5acf2b4d06427ac1.jpg', 'phone': '13076828028',
-#                        'moneyBlocked': 0.0, 'moneyOut': 0.0, 'moneySum': 30.049999999999997, 'law_firm': '国信信扬律师事务所',
-#                        'orderFlag': 1, 'password': 'fa33ab998750389624466dd272cbecaf', 'province_id': 29,
-#                        'real_name': '冯志成', 'recommend': 0, 'sex': 0, 'status': 4,
-#                        'update_date': datetime.datetime(2018, 12, 4, 14, 48, 36), 'weixin': '13076828028',
-#                        'evaluate_id': '4a423e0c02b9e7aa5acf2b4d06427ac1',
-#                        'applyDate': datetime.datetime(2016, 1, 14, 10, 25, 51), 'failType': None,
-#                        'certNum': '14401200610938444', 'points': 0, 'pointsExchange': 0, 'lawyerType': 0,
-#                        'appVersion': '5.9.1', 'deviceId': '4C643EDD-36EC-487B-80FD-E4E79325F69A',
-#                        'deviceInfo': 'Simulator,9.30', 'idCard': '410225198912284693',
-#                        'dwlsd_openid': 'oLn3Vs6NC9VMlM-Q1TvTqsRUngMo', 'moneyTj': None, 'moneyTz': None,
-#                        'deposit': None,
-#                        'depositStatus': -1, 'pointsBlocked': 0, 'pointsOut': 1000, 'pointsSum': 100000, 'channel': None,
-#                        'depositBackDate': None, 'stateJoin': 0, 'security': 0, 'advJoinState': 1, 'wxPush': 1,
-#                        'wxPushOpenId': 'oLn3Vszm0ylUD2RQqt_2fGitTq50', 'wxSsdbOpenId': None})
-lawyer = LawyerBean(**_data)
+# _data = LawyerDao.query_by_lawyer_id("4a423e0c02b9e7aa5acf2b4d06427ac1")
+# lawyer = LawyerBean(**_data)
+lawyer = LawyerBean(**{'id': '4a423e0c02b9e7aa5acf2b4d06427ac1', 'address': '广州市天河路101号兴业银行大厦十三楼',
+                       'briefInfo': '国信信扬律师事务所的合伙人。\n专职律师，擅长劳动法、公司法等领域的法律事务。\n同时担任广州市律师协会劳动和社会保障法律专业委员会委员、广东省律师协会劳动和社会保障法律专业委员会委员。先后担任广东省飞来峡水利枢纽管理局、广州市国土资源和房屋管理局越秀分局、广州市越秀区旧城改造项目办公室、广州市越秀区房屋租赁管理所、马士基信息处理(广东)有限公司、卓域集团有限公司、金源矿业有限公司等多个政府单位及大型企业的常年法律顾问。',
+                       'caseNum': 101, 'license': '/certificate/2016/1/3/13c190a132414708b4f76547ad33917e.jpg',
+                       'certificateDate': datetime.datetime(2006, 6, 1, 0, 0), 'city_id': 1292,
+                       'create_date': datetime.datetime(2014, 12, 15, 0, 17, 12), 'deviceType': 'android',
+                       'email': '17960413@qq.com', 'login_name': '13076828028',
+                       'logo': '/logo/lawyer/2016/1/12/4a423e0c02b9e7aa5acf2b4d06427ac1.jpg', 'phone': '13076828028',
+                       'moneyBlocked': 0.0, 'moneyOut': 0.0, 'moneySum': 30.049999999999997, 'law_firm': '国信信扬律师事务所',
+                       'orderFlag': 1, 'password': 'fa33ab998750389624466dd272cbecaf', 'province_id': 29,
+                       'real_name': '冯志成', 'recommend': 0, 'sex': 0, 'status': 4,
+                       'update_date': datetime.datetime(2018, 12, 4, 14, 48, 36), 'weixin': '13076828028',
+                       'evaluate_id': '4a423e0c02b9e7aa5acf2b4d06427ac1',
+                       'applyDate': datetime.datetime(2016, 1, 14, 10, 25, 51), 'failType': None,
+                       'certNum': '14401200610938444', 'points': 0, 'pointsExchange': 0, 'lawyerType': 0,
+                       'appVersion': '5.9.1', 'deviceId': '4C643EDD-36EC-487B-80FD-E4E79325F69A',
+                       'deviceInfo': 'Simulator,9.30', 'idCard': '410225198912284693',
+                       'dwlsd_openid': 'oLn3Vs6NC9VMlM-Q1TvTqsRUngMo', 'moneyTj': None, 'moneyTz': None,
+                       'deposit': None,
+                       'depositStatus': -1, 'pointsBlocked': 0, 'pointsOut': 1000, 'pointsSum': 100000, 'channel': None,
+                       'depositBackDate': None, 'stateJoin': 0, 'security': 0, 'advJoinState': 1, 'wxPush': 1,
+                       'wxPushOpenId': 'oLn3Vszm0ylUD2RQqt_2fGitTq50', 'wxSsdbOpenId': None})
 
 ##################excel 标题配置 开始#####################
 case = ["案例总数量", ]
@@ -251,6 +257,5 @@ title_dict = {
     "用户机型": "",
     "执业类别": "",
 }
-
 # ---------------------------
 workbook.save(r'.\统计表.xls')

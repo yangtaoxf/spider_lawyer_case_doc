@@ -8,6 +8,7 @@
             <path value="file://$PROJECT_DIR$/lawyer/case" />
             <path value="file://$PROJECT_DIR$/lawyer/case/doc" />
             <path value="file://$PROJECT_DIR$/lawyer/case/common" />
+            <path value="file://$PROJECT_DIR$/lawyer/statistics" />
           </resourceRoots>
         </entryData>
       </entry>
